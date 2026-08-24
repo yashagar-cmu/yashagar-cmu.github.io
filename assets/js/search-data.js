@@ -66,6 +66,13 @@ ninja.data = [{
           window.open("https://www.linkedin.com/in/yashagarwalcs", "_blank");
         },
       },{
+        id: 'social-cv',
+        title: 'CV',
+        section: 'Socials',
+        handler: () => {
+          window.open("/assets/pdf/resume.pdf", "_blank");
+        },
+      },{
       id: 'light-theme',
       title: 'Change theme to light',
       description: 'Change the theme of the site to Light',
