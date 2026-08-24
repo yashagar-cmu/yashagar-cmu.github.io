@@ -195,6 +195,7 @@ exclude:
   - QUICKSTART.md
   - README.md
   - readme_preview/
+  - RESUME-SYNC.md
   - requirements.txt
   - SEO.md
   - TROUBLESHOOTING.md

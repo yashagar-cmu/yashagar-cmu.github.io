@@ -4,14 +4,10 @@
 email: yashagar@cs.cmu.edu # your email address
 github_username: yashagar-cmu # your GitHub username
 linkedin_username: yashagarwalcs # your LinkedIn username
-# cv_pdf: # drop a PDF in assets/pdf/ and reference it here to add a download button (see note below)
+cv_pdf: /assets/pdf/resume.pdf # regenerated daily from Google Docs by .github/workflows/update-resume.yml
 # scholar_userid: # your Google Scholar ID
 # orcid_id: # your ORCID iD
 # x_username: # your X/Twitter handle
 # rss_icon: true # uncomment once the blog is enabled
 # wechat_qr: # filename of your wechat qr-code saved as an image (e.g., wechat-qr.png if saved to assets/img/wechat-qr.png)
 # whatsapp_number: # your WhatsApp number (full phone number in international format. Omit any zeroes, brackets, or dashes when adding the phone number in international format.)
-
-# NOTE: your resume PDF was intentionally not copied into assets/pdf/ because it
-# contains your phone number, which would then be public. If you want a CV download
-# button, add a phone-free version of the PDF and set cv_pdf above.
