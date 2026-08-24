@@ -1,4 +1,5 @@
 ---
+published: false # kept as a formatting reference; set true (or delete this line) to publish
 layout: page
 title: project 1
 description: with background image

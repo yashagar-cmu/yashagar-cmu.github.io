@@ -1,14 +1,9 @@
 github_users:
-  - torvalds
-  - alshedivat
+  - yashagar-cmu
 
 repo_description_lines_max: 2
 
+# TODO: add the repos you want featured on the /repositories/ page.
+# That page is currently hidden from the nav (nav: false in _pages/repositories.md).
 github_repos:
-  - alshedivat/al-folio
-  - jekyll/jekyll
-  - twbs/bootstrap
-  - jquery/jquery
-  - FortAwesome/Font-Awesome
-  - mathjax/MathJax
-  - jpswalsh/academicons
+  - yashagar-cmu/yashagar-cmu.github.io

@@ -1,10 +1,13 @@
 name: Update Google Scholar Citations
 
 on:
-  schedule:
-    - cron: "0 0 * * 1" # Monday
-    - cron: "0 0 * * 3" # Wednesday
-    - cron: "0 0 * * 5" # Friday
+  # Scheduled runs are disabled: this workflow scrapes the Google Scholar profile in
+  # _data/socials.yml (scholar_userid). Set your own scholar_userid, then uncomment
+  # the schedule below to resume automatic citation updates.
+  # schedule:
+  #   - cron: "0 0 * * 1" # Monday
+  #   - cron: "0 0 * * 3" # Wednesday
+  #   - cron: "0 0 * * 5" # Friday
   workflow_dispatch:
 
 jobs:

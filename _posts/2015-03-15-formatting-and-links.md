@@ -1,4 +1,5 @@
 ---
+published: false # kept as a formatting reference; set true (or delete this line) to publish
 layout: post
 title: a post with formatting and links
 date: 2015-03-15 16:40:16

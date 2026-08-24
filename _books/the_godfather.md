@@ -1,4 +1,5 @@
 ---
+published: false # kept as a formatting reference; set true (or delete this line) to publish
 layout: book-review
 title: The Godfather
 author: Mario Puzo

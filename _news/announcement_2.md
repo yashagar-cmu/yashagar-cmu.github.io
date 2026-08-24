@@ -1,4 +1,5 @@
 ---
+published: false # kept as a formatting reference; set true (or delete this line) to publish
 layout: post
 title: A long announcement with details
 date: 2015-11-07 16:11:00-0400

@@ -1,189 +1,129 @@
 cv:
-  name: Albert Einstein
-  label: Scientist
-  email: einstein@example.com
-  location: Princeton, NJ
+  name: Yash Agarwal
+  label: MS student in Intelligent Information Systems, Carnegie Mellon University
+  email: yashagar@cs.cmu.edu
+  location: Pittsburgh, PA
   image: ""
-  summary: A German-born theoretical physicist, widely ranked among the greatest and most influential scientists of all time
+  summary: >-
+    MS student at Carnegie Mellon's School of Computer Science, advised by Prof. Tianqi Chen.
+    I work on machine learning systems - GPU kernels, compilers, quantization and high-performance
+    inference infrastructure.
 
   social_networks:
-    - network: X
-      username: AlbertEinstein
     - network: GitHub
-      username: example
+      username: yashagar-cmu
     - network: LinkedIn
-      username: example
-
-  address:
-    street: 2712 Broadway St
-    city: San Francisco
-    region: California
-    postalCode: CA 94115
-    countryCode: US
+      username: yashagarwalcs
 
   sections:
     Education:
-      - institution: University of Zurich
-        location: Zurich, Switzerland
-        url: https://www.uzh.ch/
-        area: Physics
-        studyType: PhD
-        start_date: 1900
-        end_date: 1905
-        score: ""
-        courses: "Theory of Relativity"
+      - institution: Carnegie Mellon University, School of Computer Science
+        location: Pittsburgh, PA
+        url: https://www.cs.cmu.edu/
+        area: Intelligent Information Systems
+        studyType: Masters
+        start_date: 2025
+        end_date: 2026
+        courses: "Computer Systems, DL Systems, LLM Systems, Deep Learning, Advanced NLP, Multimodal ML"
         highlights:
-          - Description 1.
-          - Description 2.
+          - "GPA 3.9/4.0"
+          - "Advised by Prof. Tianqi Chen (NVIDIA; creator of TVM and XGBoost) on machine learning compilers."
 
-      - institution: Eidgenössische Technische Hochschule
-        location: Zurich, Switzerland
-        area: Physics
-        studyType: Federal teaching diploma
-        start_date: 1896
-        end_date: 1900
+      - institution: Indian Institute of Technology (IIT), Kharagpur
+        location: Kharagpur, India
+        url: https://www.iitkgp.ac.in/
+        area: Computer Science and Engineering
+        studyType: Bachelors
+        start_date: 2019
+        end_date: 2023
+        courses: "Deep Learning, Computer Architecture, Operating Systems, Compilers, Computer Networks"
         highlights:
-          - Description 1.
-          - Description 2.
+          - "GPA 8.65/10"
+          - "All India Rank 250 out of 1.2 million applicants, JEE Advanced."
 
     Experience:
-      - company: Institute for Advanced Study, Princeton University
-        position: Professor of Theoretical Physics
-        location: Princeton University, NJ
-        start_date: 1933
-        end_date: 1955
-        summary: Teaching at Palmer Physical Laboratory (now 302 Frist Campus Center). While not a professor at Princeton, I associated with the physics professors and continued to give lectures on campus.
+      - company: Modular Inc
+        position: AI Performance Engineering Intern
+        location: San Francisco, CA
+        url: https://www.modular.com/
+        start_date: 2026-05
         highlights:
-          - Relativity
-          - Description 2.
+          - >-
+            Accelerated pinned (page-locked, DMA-capable) host-memory allocation by 10x for tiered KV-cache
+            offload, cutting a 1.5TB allocation from 50+ minutes to under 5, unblocking trillion-parameter
+            MoE serving on 8-GPU nodes.
+          - >-
+            Built a lock-free MPSC pipeline that faults pages across NUMA-pinned threads at 99.2 GB/s,
+            isolates per-region fault locks via low-level Linux VM syscalls to eliminate lock contention,
+            and pipelines it with chunked GPU registration.
 
-      - company: California Institute of Technology
-        position: Visiting Professor
-        location: Pasadena, California, US
-        start_date: 1933
-        end_date: 1933
+      - company: Squarepoint Capital
+        position: Software Developer, C++
+        location: Bangalore, India
+        url: https://www.squarepoint-capital.com/
+        start_date: 2023-07
+        end_date: 2025-07
         highlights:
-          - Description 1.
-          - Description 2.
-
-      - company: Kaiser Wilhelm Institute for Physics
-        position: Director
-        location: Berlin, Germany
-        start_date: 1917
-        end_date: 1933
-
-      - company: Karl-Ferdinand University
-        position: Professor of Theoretical Physics
-        location: Prague, Czechoslovakia
-        start_date: 1911
-        end_date: 1917
-
-      - company: University of Zurich
-        position: Associate Professor of Theoretical Physics
-        location: Zurich, Switzerland
-        start_date: 1909
-        end_date: 1911
-
-    Volunteer:
-      - company: People's Climate March
-        position: Lead Organizer
-        location: Zurich, Switzerland
-        start_date: 2014-04-01
-        end_date: 2015-07-01
-        summary: Lead organizer for the New York City branch of the People's Climate March, the largest climate march in history.
-        highlights:
-          - "Awarded 'Climate Hero' award by Greenpeace for my efforts organizing the march."
-          - "Men of the year 2014 by Time magazine"
-
-    Awards:
-      - title: Nobel Prize in Physics
-        authors:
-          - "Royal Swedish Academy of Sciences"
-        date: 1921-11-01
-        awarder: Royal Swedish Academy of Sciences
-        url: https://www.nobelprize.org/prizes/physics/1921/einstein/biographical/
-        summary: The Nobel Prizes are five separate prizes that, according to Alfred Nobel's will of 1895, are awarded to 'those who, during the preceding year, have conferred the greatest benefit to humankind.'
-
-      - title: Max Planck Medal
-        authors:
-          - "German Physical Society"
-        date: 2029
-        awarder: German Physical Society
-        summary: Awarded for outstanding scientific achievement
-
-    Publications:
-      - title: Zur Elektrodynamik bewegter Körper
-        authors:
-          - Albert Einstein
-        publisher: Annalen der Physik
-        releaseDate: 1905-06-30
-        url: https://en.wikisource.org/wiki/Translation:On_the_Electrodynamics_of_Moving_Bodies
-        summary: It concerned an interpretation of the Michelson–Morley experiment and the properties of light and time. Special relativity incorporates the principle that the speed of light is the same for all inertial observers regardless of the state of motion of the source.
-
-      - title: Über einen die Erzeugung und Verwandlung des Lichtes betreffenden heuristischen Gesichtspunkt
-        authors:
-          - Albert Einstein
-        publisher: Annalen der Physik
-        releaseDate: 1905-03-18
-        url: https://de.wikisource.org/wiki/Über_einen_die_Erzeugung_und_Verwandlung_des_Lichtes_betreffenden_heuristischen_Gesichtspunkt
-        summary: In the second paper, he applied the quantum theory to light to explain the photoelectric effect. In particular, he used the idea of light quanta (photons) to explain experimental results, but stressed the importance of the experimental results. The importance of his work on the photoelectric effect earned him the Nobel Prize in Physics in 1921.
-
-      - title: Die Grundlage der allgemeinen Relativitätstheorie
-        authors:
-          - Albert Einstein
-        publisher: Annalen der Physik
-        releaseDate: 1916-03-20
-        url: https://de.wikisource.org/wiki/Die_Grundlage_der_allgemeinen_Relativitätstheorie
-        summary: The publication of the theory of general relativity made him internationally famous. He was professor of physics at the universities of Zurich (1909–1911) and Prague (1911–1912), before he returned to ETH Zurich (1912–1914).
-
-    Skills:
-      - name: Physics
-        level: Master
-        icon: fa-solid fa-hashtag
-        keywords: "Quantum Mechanics, Quantum Computing, Quantum Information, Quantum Cryptography, Quantum Communication, Quantum Teleportation"
-
-    Languages:
-      - name: German
-        summary: "Native speaker"
-
-      - name: English
-        summary: "Fluent"
-
-    Interests:
-      - name: Physics
-        icon: fa-solid fa-tag
-        keywords: "Quantum Mechanics, Quantum Computing, Quantum Information, Quantum Cryptography, Quantum Communication, Quantum Teleportation"
-
-    Certificates:
-      - name: Machine Learning
-        date: 2018-01-01
-        issuer: Stanford University
-        icon: fa-solid fa-location-dot
-
-      - name: Quantum Computing
-        date: 2018-01-01
-        issuer: Stanford University
-        icon: fa-solid fa-tag
-
-      - name: Quantum Information
-        date: 2018-01-01
-        issuer: Stanford University
-        icon: fa-solid fa-envelope
+          - >-
+            Architected new trading capabilities for FX Options, implementing an end-to-end solution in
+            C++20 and Python using STL, object-oriented design and comprehensive tests, pioneering a new
+            asset class capability at the firm.
+          - "Redesigned the messaging protocol by refactoring a 2000+ line C++ protocol into a modular object-oriented structure."
+          - "Debugged critical production crashes using gdb core dump analysis and implemented thread-safety in memory access."
+          - "Redesigned a multithreaded Python testing framework to a single-threaded architecture, eliminating 40% of test flakes."
 
     Projects:
-      - name: Quantum Computing
-        summary: Quantum computing is the use of quantum-mechanical phenomena such as superposition and entanglement to perform computation. Computers that perform quantum computations are known as quantum computers.
+      - name: Needle - Optimizing CUDA GPU Kernels and Autodiff
+        summary: "Deep Learning Systems course project, Fall 2025."
+        start_date: 2025-09
+        end_date: 2025-12
         highlights:
-          - Quantum Teleportation
-          - Quantum Cryptography
-        start_date: 2018-01-01
-        end_date: 2018-01-01
+          - "Optimized a Matmul CUDA kernel by tiling, vectorization and GMEM coalescing, achieving 85% of cuBLAS performance."
+          - "Implemented Flash Attention, including kernel fusion, tiling and online softmax, achieving 77% of PyTorch performance."
+          - "Architected automatic differentiation Tensor, complete with mathematical ops and nn.Modules for Conv, RNN and MHA."
+          - "Developed an NDArray class supporting reshaping, broadcasting, summation and Matmul using C++ and CUDA backends."
 
-    References:
-      - name: Professor John Doe
-        icon: fa-solid fa-laptop
-        reference: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aliquam condimentum, diam quis convallis euismod, arcu mi ullamcorper lorem, a vestibulum nunc magna at sem. Sed in risus ac felis varius blandit.
+      - name: WhisQer - Quantization-trained Conformer
+        summary: "Deep Learning course project, Fall 2025."
+        start_date: 2025-09
+        end_date: 2025-12
+        highlights:
+          - >-
+            Architected a quantized Conformer ASR with 2-bit and 1-bit precision variants and learnable
+            scaling parameters, compressing a 108MB FP32 model to 45.6MB at 2-bit by quantizing encoder
+            FFN and attention projections.
+          - "Implemented teacher-student co-training combining CTC and KL divergence loss with a straight-through estimator."
+          - "Built an end-to-end PyTorch ASR training pipeline with a streaming audio dataloader, feature pipeline and CTC decoding."
 
-      - name: Professor Jane Smith
-        icon: fa-solid fa-thumbtack
-        reference: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aliquam condimentum, diam quis convallis euismod, arcu mi ullamcorper lorem, a vestibulum nunc magna at sem. Sed in risus ac felis varius blandit.
+      - name: Malloc, Cache and Shell
+        summary: "Computer Systems course projects, Spring 2026."
+        start_date: 2026-01
+        end_date: 2026-05
+        highlights:
+          - "Implemented malloc using mmap and free-lists - implicit, explicit and segregated, with block coalescing and various fit policies."
+          - "Optimized throughput using a Better Fit policy and memory utilization using seg-lists with miniblocks and no footers."
+          - "Implemented a cache simulator and optimized matrix transpose by tiling and eliminating evictions - 4th in a class of 200."
+          - "Implemented a Unix shell with signal handling, bg/fg commands, forking and reaping child processes, and IO redirection."
+          - "Parallelized a file system with RW locks, enabling concurrent reads and writes to shared inodes, blocks and directories."
+
+    Publications:
+      - title: "YesBut: Evaluating Vision-Language Models"
+        authors:
+          - Yash Agarwal
+        publisher: EMNLP 2024
+        releaseDate: 2024
+
+    Awards:
+      - title: JEE Advanced - All India Rank 250
+        date: 2019
+        awarder: Joint Entrance Examination (Advanced)
+        summary: Ranked 250 out of approximately 1.2 million applicants.
+
+    Skills:
+      - name: Languages and Tools
+        icon: fa-solid fa-code
+        keywords: "C++23, Python, Rust, Bash, Git, GitLab, Linux, Bazel, CMake, STL"
+
+      - name: Machine Learning
+        icon: fa-solid fa-microchip
+        keywords: "PyTorch, JAX, NumPy, CUDA, Triton, Mojo, Wandb, HuggingFace"
