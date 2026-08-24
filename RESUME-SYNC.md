@@ -31,6 +31,26 @@ row produced an identical hash — so an unedited doc simply hashes the same and
 
 The script uses only the Python standard library, so the workflow needs no `pip install` step.
 
+## Knowing whether it is working
+
+On a change the job also writes [`_data/resume.yml`](_data/resume.yml):
+
+```yaml
+last_updated: "2026-08-24T23:30:00Z"
+pages: 1
+bytes: 114362
+sha256: "9c10e982..."
+```
+
+`/cv/` prints `last_updated` under the Download button, so the live site tells you how fresh the PDF
+is. `pages` sizes the embed to the document's real length, so the CV never scrolls inside its own
+frame.
+
+Note that `last_updated` tracks when the **PDF content last changed**, not when the job last ran — an
+unchanged document is deliberately not recommitted. So if you edit the doc and the date on `/cv/`
+has not moved within a day, the schedule is broken; check the Actions tab, which lists every run
+including the ones that found nothing to do.
+
 ## Why the deploy is called explicitly
 
 The workflow commits and pushes the new PDF to `main`, but that push **does not** start the

@@ -29,6 +29,7 @@ jobs:
     env:
       GDOC_ID: 1wMSrMhU9DBhfyTFLW_fJJiLEUP43SyIkTrdcHro12t8
       RESUME_PDF_PATH: assets/pdf/resume.pdf
+      RESUME_META_PATH: _data/resume.yml
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
@@ -43,7 +44,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$RESUME_PDF_PATH"
+          git add "$RESUME_PDF_PATH" "$RESUME_META_PATH"
           if git diff --cached --quiet; then
             echo "Nothing staged; skipping commit."
             echo "committed=false" >> "$GITHUB_OUTPUT"
