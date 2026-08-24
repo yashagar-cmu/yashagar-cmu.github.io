@@ -48,11 +48,27 @@ jobs:
           if git diff --cached --quiet; then
             echo "Nothing staged; skipping commit."
             echo "committed=false" >> "$GITHUB_OUTPUT"
-          else
-            git commit -m "chore: update resume PDF from Google Docs"
-            git push
-            echo "committed=true" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          git commit -m "chore: update resume PDF from Google Docs"
+
+          # Other workflows in this repo also push to main (the TOC updater, for
+          # one), so the ref can move between checkout and push. Rebase and retry
+          # instead of failing the run and leaving the PDF unpublished.
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              echo "committed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt/5); rebasing onto origin/main."
+            if ! git pull --rebase origin main; then
+              git rebase --abort || true
+              echo "::error::Rebase onto origin/main failed."
+              exit 1
+            fi
+          done
+          echo "::error::Could not push after 5 attempts."
+          exit 1
 
   # A commit pushed with GITHUB_TOKEN deliberately does not trigger other
   # workflows, so the push above will not start a deploy on its own. Calling
