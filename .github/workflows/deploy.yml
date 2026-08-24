@@ -60,6 +60,16 @@ on:
       - "!INSTALL.md"
       - "!README.md"
   workflow_dispatch:
+  # Lets other workflows (e.g. update-resume.yml) run this deploy as part of
+  # their own run. A commit pushed with GITHUB_TOKEN cannot trigger a workflow,
+  # so calling this directly is how an automated commit reaches the live site.
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to build (defaults to the triggering commit)"
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -71,6 +81,8 @@ jobs:
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - name: Setup Ruby 💎
         uses: ruby/setup-ruby@v1
         with:

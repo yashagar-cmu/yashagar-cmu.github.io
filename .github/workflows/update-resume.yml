@@ -1,20 +1,18 @@
 name: Update resume PDF
 
-# Exports the Google Doc resume to assets/pdf/resume.pdf once a day.
+# Exports the resume Google Doc to assets/pdf/resume.pdf once a day.
 #
-# The job is gated on the Drive `version` field, so a run against an unedited
-# doc makes one metadata call and stops - no download, no commit. See
-# bin/update_resume_pdf.py and the setup notes in RESUME-SYNC.md.
+# The doc is shared "anyone with the link can view", so Google's export
+# endpoint needs no credentials and the job needs no secrets. Google renders
+# the PDF server-side, so there is no .docx step and no local conversion.
+#
+# A commit only happens when the exported bytes hash differently from the PDF
+# already in the repo. See bin/update_resume_pdf.py and RESUME-SYNC.md.
 
 on:
   schedule:
     - cron: "0 7 * * *" # daily at 07:00 UTC
   workflow_dispatch:
-    inputs:
-      force:
-        description: "Export even if the document version is unchanged"
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -26,29 +24,18 @@ concurrency:
 jobs:
   update-resume:
     runs-on: ubuntu-latest
+    outputs:
+      committed: ${{ steps.commit.outputs.committed }}
     env:
       GDOC_ID: 1wMSrMhU9DBhfyTFLW_fJJiLEUP43SyIkTrdcHro12t8
       RESUME_PDF_PATH: assets/pdf/resume.pdf
-      VERSION_FILE: .github/resume-version.json
-      DEPLOY_PAT: ${{ secrets.DEPLOY_PAT }}
     steps:
       - name: Checkout 🛎️
-        uses: actions/checkout@v5
-
-      - name: Setup Python 🐍
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-
-      - name: Install dependencies 💾
-        run: pip install --quiet google-auth requests
+        uses: actions/checkout@v4
 
       - name: Export the document 📄
         id: export
-        env:
-          GDOC_SERVICE_ACCOUNT_KEY: ${{ secrets.GDOC_SERVICE_ACCOUNT_KEY }}
-          FORCE: ${{ inputs.force }}
-        run: python bin/update_resume_pdf.py
+        run: python3 bin/update_resume_pdf.py
 
       - name: Commit 📝
         if: steps.export.outputs.changed == 'true'
@@ -56,7 +43,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$RESUME_PDF_PATH" "$VERSION_FILE"
+          git add "$RESUME_PDF_PATH"
           if git diff --cached --quiet; then
             echo "Nothing staged; skipping commit."
             echo "committed=false" >> "$GITHUB_OUTPUT"
@@ -66,12 +53,16 @@ jobs:
             echo "committed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Commits made with GITHUB_TOKEN deliberately do not trigger other
-      # workflows, so the deploy has to be kicked off explicitly. Needs a PAT
-      # with `workflow` scope stored as the DEPLOY_PAT secret; without it the
-      # new PDF simply ships with the next push to main.
-      - name: Trigger site deploy 🚀
-        if: steps.commit.outputs.committed == 'true' && env.DEPLOY_PAT != ''
-        env:
-          GH_TOKEN: ${{ env.DEPLOY_PAT }}
-        run: gh workflow run deploy.yml --ref main
+  # A commit pushed with GITHUB_TOKEN deliberately does not trigger other
+  # workflows, so the push above will not start a deploy on its own. Calling
+  # deploy.yml as a reusable workflow runs it inside this same run instead,
+  # which needs no personal access token. `ref: main` is required because the
+  # commit above is newer than the SHA that triggered this run.
+  deploy:
+    needs: update-resume
+    if: needs.update-resume.outputs.committed == 'true'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      ref: main
+    permissions:
+      contents: write

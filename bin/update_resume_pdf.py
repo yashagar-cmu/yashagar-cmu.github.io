@@ -1,33 +1,35 @@
 #!/usr/bin/env python3
-"""Export a Google Doc to PDF, but only when the doc has actually changed.
+"""Export the resume Google Doc to PDF, and report whether it actually changed.
 
-Google Drive renders the PDF server-side (the same output as File > Download >
-PDF in the Docs UI), so there is no local docx -> PDF conversion step and no
-fidelity loss.
+The doc is shared as "anyone with the link can view", so Google's own export
+endpoint works with no credentials:
 
-Change detection uses the Drive `version` field, a monotonically increasing
-counter Drive bumps on every revision. The last seen value is committed to the
-repo, so a scheduled run on an unedited doc costs one metadata request and
-exits without downloading or committing anything.
+    https://docs.google.com/document/d/<ID>/export?format=pdf
+
+Drive renders the PDF server-side - the same output as File > Download > PDF
+in the Docs UI - so there is no .docx intermediate and no local conversion.
+
+Change detection is a SHA-256 of the exported bytes compared against the PDF
+already committed. Google's export is byte-stable for an unchanged document
+(verified by exporting the same doc repeatedly), so an unedited doc hashes
+identically and the workflow skips the commit.
+
+Only the standard library is used, so the workflow needs no pip install.
 
 Environment:
-  GDOC_SERVICE_ACCOUNT_KEY  service account JSON key (the whole file contents)
-  GDOC_ID                   the document ID to export
-  RESUME_PDF_PATH           output path (default: assets/pdf/resume.pdf)
-  VERSION_FILE              state file (default: .github/resume-version.json)
-  FORCE                     set to "true" to export regardless of version
+  GDOC_ID           document ID to export (required)
+  RESUME_PDF_PATH   output path (default: assets/pdf/resume.pdf)
 """
 
-import json
+import hashlib
 import os
 import pathlib
 import sys
+import urllib.error
+import urllib.request
 
-from google.auth.transport.requests import AuthorizedSession
-from google.oauth2 import service_account
-
-DRIVE_FILES = "https://www.googleapis.com/drive/v3/files"
-SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
+TIMEOUT = 120
+UA = "Mozilla/5.0 (compatible; resume-sync/1.0; +https://github.com/yashagar-cmu)"
 
 
 def fail(message):
@@ -36,110 +38,60 @@ def fail(message):
 
 
 def set_output(name, value):
-    out = os.environ.get("GITHUB_OUTPUT")
-    if out:
-        with open(out, "a", encoding="utf-8") as handle:
+    path = os.environ.get("GITHUB_OUTPUT")
+    if path:
+        with open(path, "a", encoding="utf-8") as handle:
             handle.write(f"{name}={value}\n")
+    print(f"{name}={value}")
 
 
 def main():
-    raw_key = os.environ.get("GDOC_SERVICE_ACCOUNT_KEY", "").strip()
-    if not raw_key:
-        fail("GDOC_SERVICE_ACCOUNT_KEY is empty. Add the service account JSON key as a repository secret.")
-
     doc_id = os.environ.get("GDOC_ID", "").strip()
     if not doc_id:
         fail("GDOC_ID is empty.")
 
     pdf_path = pathlib.Path(os.environ.get("RESUME_PDF_PATH", "assets/pdf/resume.pdf"))
-    version_path = pathlib.Path(os.environ.get("VERSION_FILE", ".github/resume-version.json"))
-    force = os.environ.get("FORCE", "").lower() == "true"
+    url = f"https://docs.google.com/document/d/{doc_id}/export?format=pdf"
 
+    print(f"Fetching {url}")
+    request = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
-        info = json.loads(raw_key)
-    except json.JSONDecodeError as exc:
-        fail(f"GDOC_SERVICE_ACCOUNT_KEY is not valid JSON: {exc}")
+        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+            body = response.read()
+            final_url = response.geturl()
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403):
+            fail(
+                f"HTTP {exc.code} - the document is not publicly readable. Set its sharing to "
+                '"Anyone with the link -> Viewer", or restore the service account flow.'
+            )
+        fail(f"HTTP {exc.code} fetching the document: {exc.reason}")
+    except urllib.error.URLError as exc:
+        fail(f"Could not reach Google Docs: {exc.reason}")
 
-    credentials = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
-    session = AuthorizedSession(credentials)
-
-    # 1. Cheap metadata request - this is the gate.
-    meta = session.get(
-        f"{DRIVE_FILES}/{doc_id}",
-        params={"fields": "id,name,version,modifiedTime,mimeType", "supportsAllDrives": "true"},
-        timeout=30,
-    )
-    if meta.status_code == 404:
+    # A private doc answers with an HTML sign-in page and HTTP 200 after redirects,
+    # so check the payload rather than trusting the status code.
+    if not body.startswith(b"%PDF"):
+        hint = " (redirected to a sign-in page)" if "accounts.google.com" in final_url else ""
         fail(
-            f"Document {doc_id} not found. Share it (Viewer) with the service account: "
-            f"{info.get('client_email', '<unknown>')}"
+            f"Response was not a PDF{hint}: {len(body)} bytes starting {body[:16]!r}. "
+            'Check that sharing is set to "Anyone with the link -> Viewer".'
         )
-    if meta.status_code == 403:
-        fail(
-            f"Access denied to {doc_id}. Share it (Viewer) with {info.get('client_email', '<unknown>')} "
-            "and confirm the Drive API is enabled for the project."
-        )
-    if not meta.ok:
-        fail(f"Drive metadata request failed: HTTP {meta.status_code} {meta.text[:400]}")
 
-    meta = meta.json()
-    remote_version = str(meta.get("version", ""))
-    if not remote_version:
-        fail("Drive did not return a version for the document.")
+    new_digest = hashlib.sha256(body).hexdigest()
+    old_digest = hashlib.sha256(pdf_path.read_bytes()).hexdigest() if pdf_path.exists() else None
 
-    print(f"Document : {meta.get('name')}")
-    print(f"Version  : {remote_version} (modified {meta.get('modifiedTime')})")
+    print(f"exported : {len(body):,} bytes  sha256={new_digest}")
+    print(f"committed: {old_digest or '(no existing file)'}")
 
-    stored_version = None
-    if version_path.exists():
-        try:
-            stored_version = str(json.loads(version_path.read_text(encoding="utf-8")).get("version", ""))
-        except (json.JSONDecodeError, OSError):
-            stored_version = None
-    print(f"Last seen: {stored_version or '(none)'}")
-
-    if not force and stored_version == remote_version and pdf_path.exists():
-        print("Unchanged since the last run - nothing to do.")
+    if old_digest == new_digest:
+        print("Unchanged - nothing to commit.")
         set_output("changed", "false")
         return
 
-    # 2. Only now do we pay for the export.
-    print("Exporting PDF...")
-    export = session.get(
-        f"{DRIVE_FILES}/{doc_id}/export",
-        params={"mimeType": "application/pdf"},
-        timeout=120,
-    )
-    if not export.ok:
-        fail(f"Export failed: HTTP {export.status_code} {export.text[:400]}")
-
-    body = export.content
-    if not body.startswith(b"%PDF"):
-        fail(f"Export did not return a PDF (got {len(body)} bytes starting {body[:16]!r}).")
-
-    previous = pdf_path.read_bytes() if pdf_path.exists() else None
     pdf_path.parent.mkdir(parents=True, exist_ok=True)
     pdf_path.write_bytes(body)
-
-    version_path.parent.mkdir(parents=True, exist_ok=True)
-    version_path.write_text(
-        json.dumps(
-            {
-                "document_id": doc_id,
-                "name": meta.get("name"),
-                "version": remote_version,
-                "modifiedTime": meta.get("modifiedTime"),
-            },
-            indent=2,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
-    if previous == body:
-        print(f"Version changed but the rendered PDF is byte-identical; recording version only.")
-    else:
-        print(f"Wrote {pdf_path} ({len(body):,} bytes).")
+    print(f"Updated {pdf_path}")
     set_output("changed", "true")
 
 
