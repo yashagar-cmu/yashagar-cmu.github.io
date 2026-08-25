@@ -23,11 +23,12 @@ document's real page count.
 Environment:
   GDOC_ID            document ID to export (required)
   RESUME_PDF_PATH    output path (default: assets/pdf/resume.pdf)
-  RESUME_META_PATH   metadata path (default: _data/resume.yml)
+  RESUME_META_PATH   metadata path (default: src/data/resume.json)
 """
 
 import datetime
 import hashlib
+import json
 import os
 import pathlib
 import re
@@ -69,8 +70,8 @@ def main():
     if not doc_id:
         fail("GDOC_ID is empty.")
 
-    pdf_path = pathlib.Path(os.environ.get("RESUME_PDF_PATH", "assets/pdf/resume.pdf"))
-    meta_path = pathlib.Path(os.environ.get("RESUME_META_PATH", "_data/resume.yml"))
+    pdf_path = pathlib.Path(os.environ.get("RESUME_PDF_PATH", "public/static/resume.pdf"))
+    meta_path = pathlib.Path(os.environ.get("RESUME_META_PATH", "src/data/resume.json"))
     url = f"https://docs.google.com/document/d/{doc_id}/export?format=pdf"
 
     print(f"Fetching {url}")
@@ -116,13 +117,21 @@ def main():
     stamp = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)
     meta_path.parent.mkdir(parents=True, exist_ok=True)
     meta_path.write_text(
-        "# Written by bin/update_resume_pdf.py - do not edit by hand.\n"
-        "# last_updated is when the PDF content last changed, not when the job last ran;\n"
-        "# an unchanged document is not recommitted. Check the Actions tab for run history.\n"
-        f'last_updated: "{stamp.isoformat().replace("+00:00", "Z")}"\n'
-        f"pages: {pages}\n"
-        f"bytes: {len(body)}\n"
-        f'sha256: "{new_digest}"\n',
+        json.dumps(
+            {
+                "_comment": (
+                    "Written by bin/update_resume_pdf.py - do not edit by hand. "
+                    "last_updated is when the PDF content last changed, not when the "
+                    "job last ran; an unchanged document is not recommitted."
+                ),
+                "last_updated": stamp.isoformat().replace("+00:00", "Z"),
+                "pages": pages,
+                "bytes": len(body),
+                "sha256": new_digest,
+            },
+            indent=2,
+        )
+        + "\n",
         encoding="utf-8",
     )
     print(f"Updated {pdf_path} ({pages} page(s)) and {meta_path}")

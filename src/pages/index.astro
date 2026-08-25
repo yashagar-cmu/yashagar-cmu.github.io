@@ -1,0 +1,172 @@
+---
+import MetaPage from "@/components/MetaPage.astro"
+import Layout from "@/layouts/Layout.astro"
+import { formatDate } from "@/lib/utils"
+import { getCollection, render } from "astro:content"
+
+const news = (await getCollection("news")).sort(
+  (a, b) => b.data.date.getTime() - a.data.date.getTime(),
+)
+
+const newsEntries = await Promise.all(
+  news.map(async (entry) => ({
+    ...entry,
+    Content: (await render(entry)).Content,
+  })),
+)
+
+// The eye-catch row. Keep it short — four is about the limit before it stops
+// reading as a glance and starts reading as a list.
+const AFFILIATIONS = [
+  { label: "Carnegie Mellon", detail: "MS, Intelligent Information Systems" },
+  { label: "IIT Kharagpur", detail: "BTech, Computer Science" },
+  { label: "Modular", detail: "AI Performance Engineering" },
+  { label: "Squarepoint Capital", detail: "Low-latency C++" },
+]
+---
+
+<Layout>
+  <MetaPage slot="head" />
+
+  <intro-section>
+    <h1>Yash Agarwal</h1>
+    <tagline-span>Machine learning systems — GPU kernels, compilers, quantization.</tagline-span>
+
+    <affiliation-row>
+      {
+        AFFILIATIONS.map(({ label, detail }) => (
+          <affiliation-chip title={detail}>{label}</affiliation-chip>
+        ))
+      }
+    </affiliation-row>
+
+    <prose-content>
+      <p>
+        I'm a Master's student in Intelligent Information Systems at Carnegie
+        Mellon's School of Computer Science, advised by Prof. Tianqi Chen, where
+        I work on machine learning compilers. I'm currently at <a
+          href="https://www.modular.com/">Modular</a
+        > building host-memory and KV-cache offload infrastructure for large-scale
+        inference.
+      </p>
+      <p>
+        Before CMU I spent two years writing low-latency C++ for FX Options
+        trading systems at <a href="https://www.squarepoint-capital.com/"
+          >Squarepoint Capital</a
+        >, and studied Computer Science at <a href="https://www.iitkgp.ac.in/"
+          >IIT Kharagpur</a
+        >. I mostly care about making models run fast on real hardware.
+      </p>
+    </prose-content>
+  </intro-section>
+
+  {
+    newsEntries.length > 0 && (
+      <news-section>
+        <h2>News</h2>
+        <ul>
+          {newsEntries.map(({ id, data, Content }) => (
+            <li>
+              <time datetime={data.date.toISOString()}>
+                {formatDate(data.date)}
+              </time>
+              <news-body data-id={id}>
+                <Content />
+              </news-body>
+            </li>
+          ))}
+        </ul>
+      </news-section>
+    )
+  }
+</Layout>
+
+<style>
+  intro-section {
+    display: block;
+    color: var(--muted-foreground);
+
+    @media (width >= 64rem) {
+      margin-block-start: -0.2em;
+    }
+
+    h1 {
+      font-size: var(--step-2);
+      line-height: calc(var(--leading-offset) + 1em);
+      font-weight: var(--font-weight-medium);
+      color: var(--foreground);
+      margin-block-end: var(--space-3xs);
+    }
+
+    tagline-span {
+      display: block;
+      font-size: var(--step-0);
+      color: color-mix(in oklab, var(--muted-foreground) 80%, transparent);
+    }
+
+    affiliation-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-3xs);
+      margin-block-start: var(--space-xs);
+      font-size: var(--step--1);
+
+      affiliation-chip {
+        padding-inline: var(--space-2xs);
+        color: var(--foreground);
+        background-color: color-mix(in oklab, var(--muted) 50%, transparent);
+        border-radius: var(--radius-full);
+        cursor: default;
+      }
+    }
+
+    prose-content {
+      display: block;
+      margin-block-start: var(--space-s);
+    }
+  }
+
+  news-section {
+    display: block;
+    margin-block-start: var(--space-l);
+
+    h2 {
+      font-size: var(--step-0);
+      font-weight: var(--font-weight-medium);
+      color: var(--foreground);
+      margin-block-end: var(--space-xs);
+    }
+
+    ul {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2xs);
+      list-style: none;
+    }
+
+    li {
+      display: grid;
+      grid-template-columns: 7.5rem 1fr;
+      gap: var(--space-2xs);
+      align-items: baseline;
+      color: var(--muted-foreground);
+
+      time {
+        font-size: var(--step--1);
+        color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+        font-variant-numeric: tabular-nums;
+      }
+
+      news-body :global(p) {
+        margin: 0;
+      }
+    }
+
+    @media (width < 40rem) {
+      li {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+    }
+  }
+</style>
