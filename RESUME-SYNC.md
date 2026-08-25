@@ -1,6 +1,6 @@
 # Resume sync from Google Docs
 
-[`assets/pdf/resume.pdf`](assets/pdf/resume.pdf) is regenerated from a Google Doc by
+[`public/static/resume.pdf`](public/static/resume.pdf) is regenerated from a Google Doc by
 [`.github/workflows/update-resume.yml`](.github/workflows/update-resume.yml), which runs daily at
 07:00 UTC and can also be triggered by hand from the Actions tab.
 
@@ -33,16 +33,18 @@ The script uses only the Python standard library, so the workflow needs no `pip 
 
 ## Knowing whether it is working
 
-On a change the job also writes [`_data/resume.yml`](_data/resume.yml):
+On a change the job also writes [`src/data/resume.json`](src/data/resume.json):
 
-```yaml
-last_updated: "2026-08-24T23:30:00Z"
-pages: 1
-bytes: 114362
-sha256: "9c10e982..."
+```json
+{
+  "last_updated": "2026-08-24T23:08:55Z",
+  "pages": 1,
+  "bytes": 114365,
+  "sha256": "90dd40f7..."
+}
 ```
 
-`/cv/` prints `last_updated` under the Download button, so the live site tells you how fresh the PDF
+`/cv/` prints `last_updated` under the Download button (re-rendered client-side in the reader's timezone), so the live site tells you how fresh the PDF
 is. `pages` sizes the embed to the document's real length, so the CV never scrolls inside its own
 frame.
 
@@ -84,12 +86,11 @@ In the workflow's `env:` block:
 | Variable          | Meaning                                        |
 | ----------------- | ---------------------------------------------- |
 | `GDOC_ID`         | Document ID — the long string in the doc's URL |
-| `RESUME_PDF_PATH` | Where the PDF is written                       |
+| `RESUME_PDF_PATH` | Where the PDF is written (`public/static/resume.pdf`)                       |
 
 The PDF is surfaced on the site in two places, both of which need updating if you move it:
 
-- `cv_pdf` in [`_data/socials.yml`](_data/socials.yml) — the CV icon under your bio
-- [`_pages/cv.md`](_pages/cv.md) — the embedded viewer and download buttons on `/cv/`
+- [`src/pages/cv.astro`](src/pages/cv.astro) — the embedded viewer and download button on `/cv/`
 
 ## If sharing changes
 

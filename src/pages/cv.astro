@@ -1,0 +1,110 @@
+---
+import MetaPage from "@/components/MetaPage.astro"
+import Layout from "@/layouts/Layout.astro"
+import resume from "@/data/resume.json"
+
+// The PDF is regenerated from Google Docs by .github/workflows/update-resume.yml,
+// which also writes src/data/resume.json. `pages` sizes the embed to the real
+// document length so it never scrolls inside its own frame, and `sha256` keys the
+// URL so a new resume is a new URL (GitHub Pages serves PDFs with max-age=600 and
+// no cache-buster of its own).
+const pages = resume.pages ?? 1
+const cacheKey = resume.sha256?.slice(0, 12)
+const pdfUrl = cacheKey ? `/static/resume.pdf?v=${cacheKey}` : "/static/resume.pdf"
+---
+
+<Layout>
+  <MetaPage slot="head" title="CV" />
+
+  <cv-actions>
+    <a href={pdfUrl} download="Yash_Agarwal_CV.pdf">Download PDF</a>
+    {
+      resume.last_updated && (
+        <time class="cv-updated" datetime={resume.last_updated}>
+          Last updated{" "}
+          {new Intl.DateTimeFormat("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "UTC",
+            timeZoneName: "short",
+          }).format(new Date(resume.last_updated))}
+        </time>
+      )
+    }
+  </cv-actions>
+
+  <cv-frame style={`aspect-ratio: 8.5 / ${pages * 11};`}>
+    <object data={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`} type="application/pdf">
+      <p>
+        This browser won't show PDFs inline — <a href={pdfUrl}>open the CV in a new tab</a>.
+      </p>
+    </object>
+  </cv-frame>
+</Layout>
+
+<script>
+  // The stamp is rendered as UTC at build time; re-render in the reader's own zone.
+  document.querySelectorAll<HTMLTimeElement>("time.cv-updated[datetime]").forEach((el) => {
+    const when = new Date(el.dateTime)
+    if (Number.isNaN(when.getTime())) return
+    el.textContent = `Last updated ${when.toLocaleString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZoneName: "short",
+    })}`
+  })
+</script>
+
+<style>
+  cv-actions {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--space-s);
+    margin-block-end: var(--space-m);
+
+    time {
+      font-size: var(--step--1);
+      color: var(--muted-foreground);
+    }
+  }
+
+  cv-frame {
+    display: block;
+    inline-size: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+
+    object {
+      inline-size: 100%;
+      block-size: 100%;
+      border: 0;
+      display: block;
+    }
+
+    p {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      block-size: 100%;
+      margin: 0;
+      padding: var(--space-m);
+      text-align: center;
+      color: var(--muted-foreground);
+    }
+  }
+
+  /* Inline PDF viewing is unreliable on phones - the download link covers it. */
+  @media (width < 36rem) {
+    cv-frame {
+      display: none;
+    }
+  }
+</style>

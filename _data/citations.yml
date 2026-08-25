@@ -1,6 +1,0 @@
-# Populated automatically by .github/workflows/update-citations.yml from the
-# Google Scholar profile set as `scholar_userid` in _data/socials.yml.
-# Currently empty: no scholar_userid is configured.
-metadata:
-  last_updated:
-papers: {}

@@ -28,8 +28,8 @@ jobs:
       committed: ${{ steps.commit.outputs.committed }}
     env:
       GDOC_ID: 1wMSrMhU9DBhfyTFLW_fJJiLEUP43SyIkTrdcHro12t8
-      RESUME_PDF_PATH: assets/pdf/resume.pdf
-      RESUME_META_PATH: _data/resume.yml
+      RESUME_PDF_PATH: public/static/resume.pdf
+      RESUME_META_PATH: src/data/resume.json
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v4
