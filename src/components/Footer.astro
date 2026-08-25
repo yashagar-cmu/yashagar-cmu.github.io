@@ -8,7 +8,9 @@ import { SITE, SOCIALS } from "@/consts"
     &copy; {new Date().getFullYear()}
     {SITE.title}
   </p>
-  <SocialIcons links={SOCIALS} />
+  <footer-socials>
+    <SocialIcons links={SOCIALS} />
+  </footer-socials>
 </footer>
 
 <style>
@@ -26,6 +28,15 @@ import { SITE, SOCIALS } from "@/consts"
     p {
       font-size: var(--step--1);
       color: var(--muted-foreground);
+    }
+
+    /* The sidebar carries these on desktop; showing them twice is noise. */
+    footer-socials {
+      display: block;
+
+      @media (width >= 64rem) {
+        display: none;
+      }
     }
   }
 </style>
