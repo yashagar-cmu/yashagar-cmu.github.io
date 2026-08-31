@@ -1,0 +1,56 @@
+<svg viewBox="0 0 780 400" xmlns="http://www.w3.org/2000/svg" font-family="'Comic Sans MS','Segoe Print','Bradley Hand',ui-rounded,sans-serif">
+  <defs>
+    <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="5" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="1.8"/></filter>
+  </defs>
+  <style>
+    .ttl { font-size: 19px; font-weight: 700; fill: #1e1e1e; }
+    .s   { font-size: 12px; fill: #868e96; }
+    .lab { font-size: 13px; font-weight: 700; }
+    .xl  { font-size: 12px; fill: #1e1e1e; }
+  </style>
+  <text x="24" y="34" class="ttl">The climb: speedup over cuMemAllocHost</text>
+
+  <!-- y gridlines 0,2,4,6,8,10 -> y 330,278,226,174,122,70 -->
+  <g stroke="#e9ecef" stroke-width="1">
+    <line x1="90" y1="330" x2="710" y2="330"/>
+    <line x1="90" y1="278" x2="710" y2="278"/>
+    <line x1="90" y1="226" x2="710" y2="226"/>
+    <line x1="90" y1="174" x2="710" y2="174"/>
+    <line x1="90" y1="122" x2="710" y2="122"/>
+    <line x1="90" y1="70"  x2="710" y2="70"/>
+  </g>
+  <g class="s" text-anchor="end">
+    <text x="82" y="334">0</text><text x="82" y="282">2×</text><text x="82" y="230">4×</text>
+    <text x="82" y="178">6×</text><text x="82" y="126">8×</text><text x="82" y="74">10×</text>
+  </g>
+  <text x="30" y="200" class="s" transform="rotate(-90 30 200)" text-anchor="middle">speedup vs cuMemAllocHost</text>
+
+  <!-- NVIDIA VMM reference line at 7.7x -> y=130, label on the left -->
+  <line x1="90" y1="130" x2="710" y2="130" stroke="#e8590c" stroke-width="2.5" stroke-dasharray="8 5"/>
+  <text x="96" y="123" class="lab" fill="#e8590c">NVIDIA VMM API — 7.7×</text>
+
+  <!-- the climb line (Excalidraw blue): (90,304)(214,304)(338,299)(462,210)(586,153)(710,93) -->
+  <g filter="url(#rough)"><polyline fill="none" stroke="#1971c2" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"
+    points="90,304 214,304 338,299 462,210 586,153 710,93"/></g>
+  <g fill="#1971c2">
+    <circle cx="90" cy="304" r="5"/><circle cx="214" cy="304" r="5"/><circle cx="338" cy="299" r="5"/>
+    <circle cx="462" cy="210" r="5"/><circle cx="586" cy="153" r="5"/>
+  </g>
+  <g filter="url(#rough)"><circle cx="710" cy="93" r="8" fill="#1971c2" stroke="#1e1e1e" stroke-width="2"/></g>
+
+  <!-- value labels -->
+  <g class="lab" fill="#1971c2" text-anchor="middle">
+    <text x="338" y="291">1.2×</text><text x="462" y="202">4.6×</text>
+    <text x="586" y="145">6.8×</text><text x="690" y="86" text-anchor="end">9.1×</text>
+  </g>
+
+  <!-- x labels angled -->
+  <g class="xl" text-anchor="end">
+    <text x="98"  y="350" transform="rotate(-20 98 350)">single</text>
+    <text x="222" y="350" transform="rotate(-20 222 350)">chunked</text>
+    <text x="346" y="350" transform="rotate(-20 346 350)">mmap+register</text>
+    <text x="470" y="350" transform="rotate(-20 470 350)">core-pinned faulting</text>
+    <text x="594" y="350" transform="rotate(-20 594 350)">per-chunk VMAs</text>
+    <text x="718" y="350" transform="rotate(-20 718 350)" font-weight="700">pipeline</text>
+  </g>
+</svg>

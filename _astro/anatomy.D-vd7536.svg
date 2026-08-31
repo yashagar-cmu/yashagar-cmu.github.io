@@ -1,0 +1,45 @@
+<svg viewBox="0 0 780 300" xmlns="http://www.w3.org/2000/svg" font-family="'Comic Sans MS','Segoe Print','Bradley Hand',ui-rounded,sans-serif">
+  <defs>
+    <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2"/></filter>
+  </defs>
+  <style>
+    .ttl { font-size: 19px; font-weight: 700; fill: #1e1e1e; }
+    .t   { font-size: 14px; fill: #1e1e1e; }
+    .s   { font-size: 12px; fill: #6b7280; }
+    .w   { font-size: 12px; fill: #1e1e1e; font-weight: 700; }
+  </style>
+  <text x="24" y="34" class="ttl">Anatomy of one allocation: serial vs pipelined</text>
+  <text x="24" y="56" class="s">mmap = reserve address space (~free) · touch = fault pages into RAM · register = driver pin + IOMMU map</text>
+
+  <!-- SERIAL -->
+  <text x="20" y="100" class="t" font-weight="700">serial</text>
+  <g filter="url(#rough)">
+    <rect x="110" y="86" width="12" height="24" fill="#e9ecef" stroke="#1e1e1e" stroke-width="1.5"/>
+    <rect x="122" y="86" width="150" height="24" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="1.5"/>
+    <rect x="272" y="86" width="340" height="24" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
+  </g>
+  <text x="197" y="103" class="w" text-anchor="middle">touch</text>
+  <text x="442" y="103" class="w" text-anchor="middle">register (serial driver pin)</text>
+  <text x="624" y="103" class="s">total = touch + register</text>
+
+  <!-- PIPELINED -->
+  <text x="20" y="180" class="t" font-weight="700">pipelined</text>
+  <g filter="url(#rough)">
+    <rect x="110" y="166" width="12" height="24" fill="#e9ecef" stroke="#1e1e1e" stroke-width="1.5"/>
+    <rect x="122" y="166" width="340" height="24" fill="#ffd8a8" stroke="#1e1e1e" stroke-width="1.5"/>
+  </g>
+  <text x="292" y="183" class="w" text-anchor="middle">register (serial driver pin)</text>
+  <g filter="url(#rough)" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="1.2">
+    <rect x="122" y="146" width="50" height="14"/><rect x="176" y="146" width="50" height="14"/>
+    <rect x="230" y="146" width="50" height="14"/><rect x="284" y="146" width="50" height="14"/>
+    <rect x="338" y="146" width="50" height="14"/><rect x="392" y="146" width="50" height="14"/>
+  </g>
+  <text x="282" y="138" class="s" fill="#1b5e20">touch workers stay ahead, chunk by chunk</text>
+  <text x="476" y="183" class="s">total ≈ register alone</text>
+
+  <!-- time arrow -->
+  <line x1="110" y1="214" x2="612" y2="214" stroke="#9ca3af" stroke-width="1.5"/>
+  <text x="110" y="232" class="s">time →</text>
+
+  <text x="24" y="270" class="s" font-weight="700" fill="#1b5e20">The serial pin is the floor. Hide everything else behind it and the wall-clock collapses to the pin alone.</text>
+</svg>

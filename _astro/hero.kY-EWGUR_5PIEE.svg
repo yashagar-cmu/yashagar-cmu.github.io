@@ -1,0 +1,46 @@
+<svg viewBox="0 0 780 360" xmlns="http://www.w3.org/2000/svg" font-family="'Comic Sans MS','Segoe Print','Bradley Hand',ui-rounded,sans-serif">
+  <defs>
+    <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="2" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/></filter>
+  </defs>
+  <style>
+    .ttl { font-size: 20px; font-weight: 700; fill: #1e1e1e; }
+    .lbl { font-size: 15px; fill: #1e1e1e; }
+    .val { font-size: 17px; font-weight: 700; fill: #1e1e1e; }
+    .sub { font-size: 13px; fill: #4b5563; }
+  </style>
+
+  <text x="24" y="36" class="ttl">Pinned-host allocation throughput (64 GiB)</text>
+  <text x="24" y="58" class="sub">my allocator vs the two pinned-host APIs CUDA ships</text>
+
+  <!-- scale: origin x=210, 1 GiB/s = 18.5px -->
+  <!-- cuMemAllocHost 3.1 -->
+  <text x="196" y="108" text-anchor="end" class="lbl">cuMemAllocHost <tspan class="sub">(NVIDIA)</tspan></text>
+  <g filter="url(#rough)"><rect x="210" y="92" width="57" height="34" rx="4" fill="#ffc9c9" stroke="#1e1e1e" stroke-width="2"/></g>
+  <text x="278" y="115" class="val">3.1</text>
+
+  <!-- VMM API 24 -->
+  <text x="196" y="178" text-anchor="end" class="lbl">CUDA VMM API <tspan class="sub">(NVIDIA)</tspan></text>
+  <g filter="url(#rough)"><rect x="210" y="162" width="444" height="34" rx="4" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2"/></g>
+  <text x="665" y="185" class="val">24</text>
+
+  <!-- mine 28.3 -->
+  <text x="196" y="248" text-anchor="end" class="lbl" font-weight="700">my allocator</text>
+  <g filter="url(#rough)"><rect x="210" y="232" width="524" height="34" rx="4" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2.5"/></g>
+  <text x="745" y="255" class="val">28.3</text>
+  <text x="430" y="254" class="lbl" font-weight="700" fill="#1b5e20">★ fastest</text>
+
+  <!-- callouts -->
+  <text x="24" y="312" class="lbl" fill="#1b5e20" font-weight="700">9.1× faster than cuMemAllocHost   ·   1.18× faster than CUDA's own VMM API</text>
+  <text x="24" y="336" class="sub">in production this turned a ~50 minute 1.5 TiB allocation into ~5 minutes</text>
+
+  <!-- axis ticks -->
+  <g class="sub">
+    <line x1="210" y1="278" x2="210" y2="286" stroke="#9ca3af"/>
+    <line x1="395" y1="278" x2="395" y2="286" stroke="#9ca3af"/>
+    <line x1="580" y1="278" x2="580" y2="286" stroke="#9ca3af"/>
+    <text x="210" y="300" text-anchor="middle">0</text>
+    <text x="395" y="300" text-anchor="middle">10</text>
+    <text x="580" y="300" text-anchor="middle">20</text>
+    <text x="690" y="300" text-anchor="middle">GiB/s</text>
+  </g>
+</svg>
