@@ -2,7 +2,6 @@ import type { SvgComponent } from "astro/types"
 import Email from "@/assets/icons/email.svg"
 import GitHub from "@/assets/icons/github.svg"
 import LinkedIn from "@/assets/icons/linkedin.svg"
-import RSS from "@/assets/icons/rss.svg"
 
 export const SITE = {
   title: "Yash Agarwal",
@@ -15,9 +14,9 @@ export const SITE = {
 } as const
 
 export const NAVIGATION = [
-  { href: "/", label: "About" },
   { href: "/blog", label: "Blog" },
   { href: "/cv", label: "CV" },
+  { href: "/", label: "About" },
 ]
 
 export const SOCIALS: { href: string; label: string; icon: SvgComponent }[] = [
@@ -28,5 +27,4 @@ export const SOCIALS: { href: string; label: string; icon: SvgComponent }[] = [
     icon: LinkedIn,
   },
   { href: "mailto:yashagar@cs.cmu.edu", label: "Email", icon: Email },
-  { href: "/rss.xml", label: "RSS", icon: RSS },
 ]

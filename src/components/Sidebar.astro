@@ -3,15 +3,26 @@ import Logo from "@/assets/logo.svg"
 import SocialIcons from "@/components/SocialIcons.astro"
 import ThemeToggle from "@/components/ThemeToggle.astro"
 import { NAVIGATION, SITE, SOCIALS } from "@/consts"
+import { getPosts } from "@/lib/content"
 import { normalizePath } from "@/lib/utils"
 
-type Props = { crumbs?: { label: string; href: string }[] }
+type Props = {
+  crumbs?: { label: string; href: string }[]
+  hasToc?: boolean
+}
 
-const { crumbs = [] } = Astro.props
+const { crumbs = [], hasToc = false } = Astro.props
 const pathname = normalizePath(Astro.url.pathname) || "/"
 const section = NAVIGATION.find(
   ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
 )
+
+// Inside the blog section, the sidebar lists every post (not just the open
+// one), labeled by shortTitle where present.
+const blogLinks = (await getPosts()).map(({ id, data }) => ({
+  label: data.shortTitle ?? data.title,
+  href: `/blog/${id}`,
+}))
 ---
 
 <aside data-bar>
@@ -20,6 +31,11 @@ const section = NAVIGATION.find(
       <Logo />
       <span>{SITE.title}</span>
     </a>
+    {hasToc && (
+        <sidebar-toc>
+          <slot name="toc" />
+        </sidebar-toc>
+      )}
     <nav>
       <ul>
         {NAVIGATION.map((item) => (
@@ -30,22 +46,44 @@ const section = NAVIGATION.find(
               >
                 {item.label}
               </a>
-              {item === section && crumbs.length > 0 && pathname !== item.href && (
-                <ul>
-                  {crumbs.map((crumb, i) => (
-                    <li data-depth={i ? 1 : undefined}>
-                      <a
-                        href={crumb.href}
-                        aria-current={
-                          i === crumbs.length - 1 ? "page" : undefined
-                        }
-                      >
-                        {crumb.label}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {item === section &&
+                pathname !== item.href &&
+                (item.href === "/blog" ? (
+                  <ul>
+                    {blogLinks.map((post) => (
+                      <li>
+                        <a
+                          href={post.href}
+                          aria-current={
+                            pathname === post.href ||
+                            pathname.startsWith(`${post.href}/`)
+                              ? "page"
+                              : undefined
+                          }
+                        >
+                          {post.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  crumbs.length > 0 && (
+                    <ul>
+                      {crumbs.map((crumb, i) => (
+                        <li data-depth={i ? 1 : undefined}>
+                          <a
+                            href={crumb.href}
+                            aria-current={
+                              i === crumbs.length - 1 ? "page" : undefined
+                            }
+                          >
+                            {crumb.label}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                ))}
             </li>
           ))}
         {!section &&
@@ -63,10 +101,10 @@ const section = NAVIGATION.find(
     </nav>
     <sidebar-socials>
       <SocialIcons links={SOCIALS} />
+      <ThemeToggle />
     </sidebar-socials>
   </sidebar-inner>
   <sidebar-toggle>
-    <ThemeToggle />
     <slot name="actions" />
   </sidebar-toggle>
 </aside>
@@ -93,6 +131,17 @@ const section = NAVIGATION.find(
     display: flex;
     flex-direction: column;
     gap: var(--space-2xs);
+    min-height: 0;
+
+    /* Fill the rail so the site nav can anchor to the bottom on every page
+       (with or without a TOC above it) instead of shifting between pages. */
+    @media (width >= 64rem) {
+      flex: 1;
+
+      > nav {
+        margin-block-start: auto;
+      }
+    }
 
     > a {
       display: inline-flex;
@@ -120,20 +169,44 @@ const section = NAVIGATION.find(
     @media (width < 64rem) {
       flex: 1;
       flex-direction: row;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
     }
   }
 
-  sidebar-socials {
+  /* The table of contents lives between the logo and the nav on wide
+     screens; on the mobile header it wraps onto its own full-width row. */
+  sidebar-toc {
     display: block;
+    min-height: 0;
+    margin-block: var(--space-s) var(--space-xs);
+
+    @media (width < 64rem) {
+      order: 99;
+      flex-basis: 100%;
+      margin-block: var(--space-2xs) calc(-1 * var(--space-2xs));
+      padding-block-start: var(--space-2xs);
+      border-block-start: 1px solid var(--border);
+    }
+  }
+
+  sidebar-socials {
+    display: flex;
+    align-items: center;
     margin-block-start: var(--space-2xs);
     margin-inline-start: -0.5rem;
 
-    /* In the mobile header the sidebar becomes a single row; the icons would
-       crowd the nav links, and they are still reachable in the footer there. */
+    /* In the mobile header the sidebar becomes a single row; the icon links
+       would crowd the nav (they stay reachable in the footer), but the theme
+       toggle rides along. */
     @media (width < 64rem) {
-      display: none;
+      margin-block-start: 0;
+      margin-inline-start: 0;
+
+      > :global(ul) {
+        display: none;
+      }
     }
   }
 
@@ -193,6 +266,8 @@ const section = NAVIGATION.find(
     @media (width < 64rem) {
       margin-inline-start: 0;
       margin-inline-end: -0.5rem;
+      /* Stay on the first header row when the TOC wraps onto a second one. */
+      align-self: flex-start;
     }
   }
 </style>

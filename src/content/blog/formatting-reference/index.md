@@ -65,6 +65,18 @@ $$
 
 It renders to native MathML — no JavaScript, no stylesheet to load.
 
+## Asides
+
+:::aside[Why asides]
+Definitions, caveats, comparison numbers, tool names, links — anything a
+reader might want but the argument doesn't need. The body must read
+complete with every aside deleted.
+:::
+
+An `:::aside` holds secondary information out of the main flow: on wide
+screens it floats to the side and text wraps around it; on phones it becomes
+a compact bordered note. The title in brackets is optional.
+
 ## Callouts
 
 :::note

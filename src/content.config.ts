@@ -25,10 +25,23 @@ const blog = defineCollection({
   schema: ({ image }) =>
     z.object({
       title: z.string(),
+      // Short label for tight spots (sidebar crumb, TOC header); falls back
+      // to title when absent.
+      shortTitle: z.string().optional(),
       description: z.string(),
       date: z.coerce.date(),
       order: z.number().optional(),
       tags: z.array(z.string()).optional(),
+      // Headline merged commits, shown as chips in the post-meta line.
+      commits: z
+        .array(
+          z.object({
+            sha: z.string(),
+            href: z.url(),
+            label: z.string().optional(),
+          }),
+        )
+        .optional(),
       authors: z.array(reference("authors")),
       image: image().optional(),
       draft: z.boolean().optional(),

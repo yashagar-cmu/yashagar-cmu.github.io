@@ -5,7 +5,12 @@ import { isSubpost } from "@/lib/utils"
 export const pageTitle = (title: string) => `${title} | ${SITE.title}`
 
 export async function getPosts(): Promise<CollectionEntry<"blog">[]> {
-  const posts = await getCollection("blog", ({ data }) => !data.draft)
+  // Drafts stay off the built site but are visible on the dev server, so
+  // they can be previewed at localhost before draft: false flips them live.
+  const posts = await getCollection(
+    "blog",
+    ({ data }) => import.meta.env.DEV || !data.draft,
+  )
   return posts
     .filter((post) => !isSubpost(post.id))
     .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
@@ -16,7 +21,8 @@ export async function getSubposts(): Promise<
 > {
   const posts = await getCollection(
     "blog",
-    ({ id, data }) => !data.draft && id.split("/").length === 2,
+    ({ id, data }) =>
+      (import.meta.env.DEV || !data.draft) && id.split("/").length === 2,
   )
   posts.sort(
     (a, b) =>

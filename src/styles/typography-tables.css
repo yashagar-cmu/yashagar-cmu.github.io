@@ -28,20 +28,21 @@ prose-content {
       }
     }
 
+    /* No min-width: numeric tables with many columns must be able to shrink
+       to the prose width instead of forcing a horizontal scroll. */
     :is(th, td) {
-      min-width: 10rem;
       max-width: 22rem;
     }
 
     th {
-      padding: 0.5em 1em;
+      padding: 0.5em 0.6em;
       font-weight: var(--font-weight-medium);
       color: var(--foreground);
       text-align: start;
     }
 
     td {
-      padding: 0.5em 1em;
+      padding: 0.5em 0.6em;
       color: var(--prose-foreground);
       text-align: start;
       vertical-align: top;

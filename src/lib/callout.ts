@@ -39,6 +39,20 @@ const raw = (value: string): ElementContent =>
 export const calloutDirective = defineMdastPlugin({
   name: "callout-directive",
   containerDirective(node, ctx) {
+    // :::aside[Title] — secondary information pulled out of the main flow;
+    // rendered as a margin note on wide screens (see typography-block.css).
+    if (node.name === "aside") {
+      const first = node.children?.[0]
+      const isLabel =
+        first?.type === "paragraph" &&
+        (first.data as { directiveLabel?: boolean })?.directiveLabel === true
+      if (isLabel) {
+        ctx.setProperty(first, "data", { hName: "aside-title" })
+      }
+      ctx.setProperty(node, "data", { hName: "aside" })
+      return
+    }
+
     const iconName = VARIANTS[node.name]
     if (!iconName) return
 

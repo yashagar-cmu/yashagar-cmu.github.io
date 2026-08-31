@@ -50,9 +50,17 @@ const sections = rendered.map(({ entry, headings }, i) => ({
 const hasToc =
   sections.length > 1 || sections.some(({ headings }) => headings.length > 0)
 
-const crumbs = [{ label: parent.data.title, href: `/blog/${parent.id}` }]
+const crumbs = [
+  {
+    label: parent.data.shortTitle ?? parent.data.title,
+    href: `/blog/${parent.id}`,
+  },
+]
 if (isSubpost(post.id)) {
-  crumbs.push({ label: post.data.title, href: `/blog/${post.id}` })
+  crumbs.push({
+    label: post.data.shortTitle ?? post.data.title,
+    href: `/blog/${post.id}`,
+  })
 }
 ---
 
@@ -65,7 +73,7 @@ if (isSubpost(post.id)) {
   {hasToc && (
       <TableOfContents
         slot="toc"
-        title={parent.data.title}
+        title={parent.data.shortTitle ?? parent.data.title}
         sections={sections}
       />
     )}
@@ -95,7 +103,7 @@ if (isSubpost(post.id)) {
                 </author-avatars>
                 <author-names>
                   {authors.map((author, j) => (
-                    <>{j > 0 && ", "}<a href={`/authors/${author.id}`}>{author.data.name}</a></>
+                    <>{j > 0 && ", "}<a href={author.data.socials?.github ?? `/authors/${author.id}`}>{author.data.name}</a></>
                   ))}
                 </author-names>
               </post-authors>
@@ -103,12 +111,14 @@ if (isSubpost(post.id)) {
             <time datetime={entry.data.date.toISOString()}
               >{formatDate(entry.data.date)}</time
             >
-            {entry.data.tags && (
-              <post-tags>
-                {entry.data.tags.map((tag) => (
-                  <a href={`/tags/${tag}`}>#{tag}</a>
+            {entry.data.commits && entry.data.commits.length > 0 && (
+              <post-commits>
+                {entry.data.commits.map((c) => (
+                  <a href={c.href} title={c.label ?? "merged commit"}>
+                    {c.sha}
+                  </a>
                 ))}
-              </post-tags>
+              </post-commits>
             )}
           </post-meta>
           <p>{entry.data.description}</p>
@@ -189,15 +199,21 @@ if (isSubpost(post.id)) {
         margin-inline-end: var(--space-3xs);
       }
 
-      post-tags {
+      post-commits {
         --underline: transparent;
 
         display: flex;
         flex-wrap: wrap;
+        align-items: center;
         gap: var(--space-3xs);
 
         a {
-          color: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
+          font-family: "IBM Plex Mono", ui-monospace, monospace;
+          font-size: 0.85em;
+          padding-inline: 0.4em;
+          background-color: color-mix(in oklab, var(--muted) 60%, transparent);
+          border-radius: var(--radius-sm);
+          color: var(--muted-foreground);
 
           &:hover {
             color: var(--foreground);
@@ -205,7 +221,7 @@ if (isSubpost(post.id)) {
         }
       }
 
-      time ~ post-tags::before {
+      time ~ post-commits::before {
         content: "·";
       }
 

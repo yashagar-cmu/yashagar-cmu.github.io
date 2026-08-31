@@ -58,7 +58,7 @@ html {
       var(--space-2xs)
     );
 
-    &:has(page-toc) {
+    &:has(sidebar-toc) {
       --bar-toc-height: calc(1.5 * var(--step--1) + 2 * var(--space-2xs) + 2px);
     }
   }

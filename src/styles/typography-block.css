@@ -18,6 +18,51 @@ prose-content {
     margin-inline: auto;
   }
 
+  /* Diagram SVGs are drawn for a light background (dark text, transparent
+     fill), so back them with a white card; without it they vanish in dark
+     mode. Photos and rendered-plot PNGs ship their own backgrounds. */
+  img[src*=".svg"] {
+    background-color: #ffffff;
+    padding: 0.75rem;
+    border-radius: var(--radius-md);
+  }
+
+  /* :::aside — secondary info out of the main flow. On wide screens the
+     note floats fully out of the article into the free right rail (the old
+     TOC columns), Tufte-style, anchored beside the text that raised it; the
+     negative end margin cancels the float's footprint so body text keeps its
+     full measure. On narrow screens it is a compact bordered note in flow. */
+  aside {
+    font-size: var(--step--1);
+    color: var(--muted-foreground);
+    border-inline-start: 2px solid var(--border);
+    padding-inline-start: var(--space-2xs);
+    margin-block: var(--space-2xs);
+
+    aside-title {
+      display: block;
+      font-weight: var(--font-weight-medium);
+      color: var(--foreground);
+    }
+
+    @media (width >= 64rem) {
+      /* The article spans 7 of 12 grid columns; the rail is 3 columns plus
+         2 inner gutters, one gutter away. Derived from the article width
+         (100% here) so it tracks the grid at every viewport. */
+      --aside-width: calc(
+        ((100% - 6 * var(--grid-gutter)) / 7) * 3 + 2 * var(--grid-gutter)
+      );
+
+      float: inline-end;
+      clear: inline-end;
+      inline-size: var(--aside-width);
+      margin-inline-end: calc(-1 * var(--aside-width) - var(--grid-gutter));
+      margin-block: 0.2em var(--space-s);
+      border-inline-start: none;
+      padding-inline-start: 0;
+    }
+  }
+
   summary {
     cursor: pointer;
     font-weight: var(--font-weight-medium);

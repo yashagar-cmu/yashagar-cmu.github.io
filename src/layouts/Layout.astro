@@ -33,13 +33,11 @@ const { crumbs } = Astro.props
     <page-grid>
       <page-header>
         <page-nav>
-          <Sidebar crumbs={crumbs}
-            ><slot name="actions" slot="actions" /></Sidebar
-          >
+          <Sidebar crumbs={crumbs} hasToc={Astro.slots.has("toc")}>
+            <slot name="actions" slot="actions" />
+            <slot name="toc" slot="toc" />
+          </Sidebar>
         </page-nav>
-        {Astro.slots.has("toc") && (
-            <page-toc><slot name="toc" /></page-toc>
-          )}
       </page-header>
       <page-content>
         <main><slot /></main>
@@ -94,20 +92,6 @@ const { crumbs } = Astro.props
       inset-block: var(--page-offset-top) var(--page-offset-bottom);
       inset-inline-start: var(--grid-edge);
       width: calc(2 * var(--grid-column-width) + var(--grid-gutter));
-    }
-  }
-
-  page-toc {
-    display: block;
-    min-width: 0;
-    grid-column: 10 / 13;
-    grid-row: 1;
-
-    @media screen and (width >= 64rem) {
-      position: fixed;
-      inset-block: var(--page-offset-top) var(--page-offset-bottom);
-      inset-inline-end: var(--grid-edge);
-      width: calc(3 * var(--grid-column-width) + 2 * var(--grid-gutter));
     }
   }
 
