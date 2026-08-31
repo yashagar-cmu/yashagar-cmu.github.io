@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -18 668 662" font-family="Segoe Print, Bradley Hand, Comic Sans MS, cursive">
+<rect x="-4" y="-18" width="668" height="662" fill="#ffffff"/>
+<defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="context-stroke" stroke-width="1.6"/></marker></defs>
+<text x="20" y="22.0" font-size="16" fill="#1e1e1e" text-anchor="start">12B - same draft weights - TPOT vs concurrency</text>
+<line x1="80" y1="340" x2="80" y2="60" stroke="#1e1e1e" stroke-width="2"/>
+<line x1="80" y1="340" x2="640" y2="340" stroke="#1e1e1e" stroke-width="2"/>
+<text x="30" y="68.0" font-size="13" fill="#868e96" text-anchor="start">TPOT</text>
+<text x="30" y="84.2" font-size="13" fill="#868e96" text-anchor="start">(ms)</text>
+<line x1="76" y1="270" x2="640" y2="270" stroke="#f1f3f5" stroke-width="1"/>
+<text x="52" y="273.0" font-size="12" fill="#868e96" text-anchor="start">2</text>
+<line x1="76" y1="200" x2="640" y2="200" stroke="#f1f3f5" stroke-width="1"/>
+<text x="52" y="203.0" font-size="12" fill="#868e96" text-anchor="start">4</text>
+<line x1="76" y1="130" x2="640" y2="130" stroke="#f1f3f5" stroke-width="1"/>
+<text x="52" y="133.0" font-size="12" fill="#868e96" text-anchor="start">6</text>
+<line x1="76" y1="60" x2="640" y2="60" stroke="#f1f3f5" stroke-width="1"/>
+<text x="52" y="63.0" font-size="12" fill="#868e96" text-anchor="start">8</text>
+<line x1="130" y1="273.5" x2="290" y2="249.7" stroke="#1971c2" stroke-width="3"/>
+<line x1="290" y1="249.7" x2="450" y2="177.60000000000002" stroke="#1971c2" stroke-width="3"/>
+<line x1="450" y1="177.60000000000002" x2="610" y2="77.5" stroke="#1971c2" stroke-width="3"/>
+<ellipse cx="130.0" cy="273.5" rx="5.0" ry="5.0" fill="#1971c2" stroke="#1971c2" stroke-width="2"/>
+<ellipse cx="290.0" cy="249.7" rx="5.0" ry="5.0" fill="#1971c2" stroke="#1971c2" stroke-width="2"/>
+<ellipse cx="450.0" cy="177.60000000000002" rx="5.0" ry="5.0" fill="#1971c2" stroke="#1971c2" stroke-width="2"/>
+<ellipse cx="610.0" cy="77.5" rx="5.0" ry="5.0" fill="#1971c2" stroke="#1971c2" stroke-width="2"/>
+<line x1="130" y1="261.25" x2="290" y2="253.2" stroke="#9c36b5" stroke-width="3"/>
+<line x1="290" y1="253.2" x2="450" y2="205.6" stroke="#9c36b5" stroke-width="3"/>
+<line x1="450" y1="205.6" x2="610" y2="134.20000000000002" stroke="#9c36b5" stroke-width="3"/>
+<ellipse cx="130.0" cy="261.25" rx="5.0" ry="5.0" fill="#9c36b5" stroke="#9c36b5" stroke-width="2"/>
+<ellipse cx="290.0" cy="253.2" rx="5.0" ry="5.0" fill="#9c36b5" stroke="#9c36b5" stroke-width="2"/>
+<ellipse cx="450.0" cy="205.6" rx="5.0" ry="5.0" fill="#9c36b5" stroke="#9c36b5" stroke-width="2"/>
+<ellipse cx="610.0" cy="134.20000000000002" rx="5.0" ry="5.0" fill="#9c36b5" stroke="#9c36b5" stroke-width="2"/>
+<text x="130.0" y="361.0" font-size="13" fill="#868e96" text-anchor="middle">c=1</text>
+<text x="290.0" y="361.0" font-size="13" fill="#868e96" text-anchor="middle">c=8</text>
+<text x="450.0" y="361.0" font-size="13" fill="#868e96" text-anchor="middle">c=32</text>
+<text x="610.0" y="361.0" font-size="13" fill="#868e96" text-anchor="middle">c=64</text>
+<text x="150" y="302.0" font-size="14" fill="#1971c2" text-anchor="start">MAX</text>
+<text x="150" y="227.0" font-size="14" fill="#9c36b5" text-anchor="start">vLLM</text>
+<text x="460" y="165.0" font-size="15" fill="#e03131" text-anchor="start">+21%</text>
+<text x="568" y="83.0" font-size="15" fill="#e03131" text-anchor="start">+28%</text>
+<text x="100" y="319.0" font-size="14" fill="#2f9e44" text-anchor="start">-16%</text>
+</svg>

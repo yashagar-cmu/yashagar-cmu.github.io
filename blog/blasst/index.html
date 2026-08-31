@@ -1,0 +1,509 @@
+<!DOCTYPE html><html lang="en-US" dir="ltr" data-astro-cid-ju4pidww> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes"><meta name="generator" content="Astro v7.2.6"><meta name="HandheldFriendly" content="True"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Yash Agarwal"><meta name="format-detection" content="telephone=no,date=no,address=no,email=no,url=no"><meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)"><meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)"><link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96"><link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="shortcut icon" href="/favicon.ico"><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><link rel="sitemap" href="/sitemap-index.xml"><link rel="alternate" type="application/rss+xml" title="Yash Agarwal" href="https://yash-agarwal.org/rss.xml"><link rel="preload" href="/_astro/IBMPlexSans-VariableFont_wdth_wght.Dew2wRiQ.woff2" as="font" type="font/woff2" crossorigin><link rel="preload" href="/_astro/IBMPlexSans-Italic-VariableFont_wdth_wght.pQNzRgz1.woff2" as="font" type="font/woff2" crossorigin><script>
+    const theme = localStorage.theme
+    if (theme === "light" || theme === "dark")
+      document.documentElement.dataset.theme = theme
+  </script> <title>Skipping attention blocks was the easy part | Yash Agarwal</title> <meta name="description" content="BLASST block-sparse attention plus one TMEM address swap: −41.9% attention-kernel time at 95% skip and −20% TTFT at 64K with accuracy above dense — an optimization worklog on a B200."> <link rel="canonical" href="https://yash-agarwal.org/blog/blasst/"> <meta property="og:title" content="Skipping attention blocks was the easy part"> <meta property="og:description" content="BLASST block-sparse attention plus one TMEM address swap: −41.9% attention-kernel time at 95% skip and −20% TTFT at 64K with accuracy above dense — an optimization worklog on a B200."> <meta property="og:type" content="article"> <meta property="og:url" content="https://yash-agarwal.org/blog/blasst/"> <meta property="og:site_name" content="Yash Agarwal"> <meta property="og:locale" content="en_US"> <meta property="og:image" content="https://yash-agarwal.org/static/1200x630.png"> <meta property="og:image:alt" content="Skipping attention blocks was the easy part"> <meta name="twitter:card" content="summary_large_image"> <meta name="twitter:title" content="Skipping attention blocks was the easy part"> <meta name="twitter:description" content="BLASST block-sparse attention plus one TMEM address swap: −41.9% attention-kernel time at 95% skip and −20% TTFT at 64K with accuracy above dense — an optimization worklog on a B200."> <meta name="twitter:image" content="https://yash-agarwal.org/static/1200x630.png"> <meta name="twitter:image:alt" content="Skipping attention blocks was the easy part"> <meta name="twitter:creator" content="Yash Agarwal"> <meta property="article:published_time" content="2026-08-31T00:00:00.000Z"> <meta property="article:author" content="Yash Agarwal"> <link rel="stylesheet" href="/_astro/_..COe4_MLI.css"><link rel="stylesheet" href="/_astro/Layout.NcP2w9yF.css"><script type="module" src="/_astro/page.Dwipeu-R.js"></script></head> <body data-astro-cid-ju4pidww> <script type="module" src="/_astro/TableOfContents.astro_astro_type_script_index_0_lang.BPFE_6ua.js"></script><script type="module">var e=()=>{let e=document.documentElement,t=e.dataset.theme===`dark`||!e.dataset.theme&&matchMedia(`(prefers-color-scheme: dark)`).matches?`light`:`dark`;e.dataset.theme=t,localStorage.theme=t},t=document.getElementById(`theme-toggle`);t&&(t.onclick=e);</script><script type="module">var e=[...document.querySelectorAll(`[data-scroll-top]`)],t=()=>{let t=scrollY>innerHeight*.5;for(let n of e)n.toggleAttribute(`data-visible`,t)};addEventListener(`scroll`,t,{passive:!0}),t(),document.addEventListener(`click`,e=>{e.target.closest(`[data-scroll-top]`)&&window.scrollTo({top:0})});</script><page-grid data-astro-cid-ju4pidww="true"> <page-header data-astro-cid-ju4pidww="true"> <page-nav data-astro-cid-ju4pidww="true"> <aside data-bar data-astro-cid-wv7whodv> <sidebar-inner data-astro-cid-wv7whodv="true"> <a href="/" aria-label="Yash Agarwal" data-astro-cid-wv7whodv> <svg width="512" height="512" viewBox="0 0 512 512" fill="none" data-astro-cid-wv7whodv="true">
+<g clip-path="url(#clip0_741_1317)">
+<path d="M512 366H72V438H512V512H0V292H440V220H0V0H512V74H72V146H512V366Z" fill="currentColor" />
+</g>
+<defs>
+<clipPath id="clip0_741_1317">
+<rect width="512" height="512" fill="white" />
+</clipPath>
+</defs>
+</svg> <span data-astro-cid-wv7whodv>Yash Agarwal</span> </a> <sidebar-toc data-astro-cid-wv7whodv="true"> <nav aria-label="Table of contents" data-astro-cid-p33bl5ka> <toc-title aria-hidden="true" data-astro-cid-p33bl5ka="true"><span data-astro-cid-p33bl5ka>BLASST</span></toc-title> <label data-astro-cid-p33bl5ka> <input type="checkbox" aria-label="Toggle table of contents" data-astro-cid-p33bl5ka> <svg viewBox="0 0 16 16" aria-hidden="true" data-astro-cid-p33bl5ka> <circle cx="8" cy="8" r="6.5" data-astro-cid-p33bl5ka></circle> <circle cx="8" cy="8" r="6.5" transform="rotate(-90 8 8)" data-astro-cid-p33bl5ka></circle> </svg> <toc-current data-astro-cid-p33bl5ka="true">BLASST</toc-current> <svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" data-astro-cid-p33bl5ka="true"><path fill="currentColor" d="m12.37 15.835l6.43-6.63C19.201 8.79 18.958 8 18.43 8H5.57c-.528 0-.771.79-.37 1.205l6.43 6.63c.213.22.527.22.74 0" /></svg> </label> <ul data-astro-cid-p33bl5ka> <li data-depth="2" data-astro-cid-p33bl5ka> <a href="#the-scoreboard" data-astro-cid-p33bl5ka>The scoreboard</a> </li><li data-depth="2" data-astro-cid-p33bl5ka> <a href="#flashattention" data-astro-cid-p33bl5ka>FlashAttention</a> </li><li data-depth="2" data-astro-cid-p33bl5ka> <a href="#vote-then-skip" data-astro-cid-p33bl5ka>Vote, then skip</a> </li><li data-depth="2" data-astro-cid-p33bl5ka> <a href="#the-instruments" data-astro-cid-p33bl5ka>The instruments</a> </li><li data-depth="2" data-astro-cid-p33bl5ka> <a href="#evidence-part-1" data-astro-cid-p33bl5ka>Evidence, part 1</a> </li><li data-depth="2" data-astro-cid-p33bl5ka> <a href="#the-0-skip-tax" data-astro-cid-p33bl5ka>The 0-skip tax</a> </li><li data-depth="2" data-astro-cid-p33bl5ka> <a href="#why-the-waits-stay" data-astro-cid-p33bl5ka>Why the waits stay</a> </li><li data-depth="2" data-astro-cid-p33bl5ka> <a href="#cross-stage-p" data-astro-cid-p33bl5ka>Cross-stage P</a> </li><li data-depth="2" data-astro-cid-p33bl5ka> <a href="#evidence-part-2" data-astro-cid-p33bl5ka>Evidence, part 2</a> </li><li data-depth="2" data-astro-cid-p33bl5ka> <a href="#from-kernel-to-model" data-astro-cid-p33bl5ka>From kernel to model</a> </li><li data-depth="2" data-astro-cid-p33bl5ka> <a href="#trusting-the-numbers" data-astro-cid-p33bl5ka>Trusting the numbers</a> </li><li data-depth="2" data-astro-cid-p33bl5ka> <a href="#where-i-landed" data-astro-cid-p33bl5ka>Where I landed</a> </li> </ul> </nav>  </sidebar-toc> <nav data-astro-cid-wv7whodv> <ul data-astro-cid-wv7whodv> <li data-astro-cid-wv7whodv> <a href="/blog" data-astro-cid-wv7whodv> Blog </a> <ul data-astro-cid-wv7whodv> <li data-astro-cid-wv7whodv> <a href="/blog/blasst" aria-current="page" data-astro-cid-wv7whodv> BLASST </a> </li><li data-astro-cid-wv7whodv> <a href="/blog/dspark" data-astro-cid-wv7whodv> DSpark </a> </li><li data-astro-cid-wv7whodv> <a href="/blog/pinned-host-memory" data-astro-cid-wv7whodv> Pinned host memory </a> </li> </ul> </li><li data-astro-cid-wv7whodv> <a href="/cv" data-astro-cid-wv7whodv> CV </a>  </li><li data-astro-cid-wv7whodv> <a href="/" data-astro-cid-wv7whodv> About </a>  </li>  </ul> </nav> <sidebar-socials data-astro-cid-wv7whodv="true"> <ul data-astro-cid-o2gh7vpa> <li data-astro-cid-o2gh7vpa> <a href="https://github.com/yashagar-cmu" data-icon-button target="_blank" rel="noopener noreferrer" aria-label="GitHub" title="GitHub" data-astro-cid-o2gh7vpa> <svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" data-astro-cid-o2gh7vpa="true"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12c0 5.303 3.438 9.8 8.205 11.385c.6.113.82-.258.82-.577c0-.285-.01-1.04-.015-2.04c-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729c1.205.084 1.838 1.236 1.838 1.236c1.07 1.835 2.809 1.305 3.495.998c.108-.776.417-1.305.76-1.605c-2.665-.3-5.466-1.332-5.466-5.93c0-1.31.465-2.38 1.235-3.22c-.135-.303-.54-1.523.105-3.176c0 0 1.005-.322 3.3 1.23c.96-.267 1.98-.399 3-.405c1.02.006 2.04.138 3 .405c2.28-1.552 3.285-1.23 3.285-1.23c.645 1.653.24 2.873.12 3.176c.765.84 1.23 1.91 1.23 3.22c0 4.61-2.805 5.625-5.475 5.92c.42.36.81 1.096.81 2.22c0 1.606-.015 2.896-.015 3.286c0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" /></svg> </a> </li><li data-astro-cid-o2gh7vpa> <a href="https://linkedin.com/in/yashagarwalcs" data-icon-button target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn" data-astro-cid-o2gh7vpa> <svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" data-astro-cid-o2gh7vpa="true"><path fill="currentColor" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037c-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85c3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065a2.064 2.064 0 1 1 2.063 2.065m1.782 13.019H3.555V9h3.564zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0" /></svg> </a> </li><li data-astro-cid-o2gh7vpa> <a href="mailto:yashagar@cs.cmu.edu" data-icon-button target="_blank" rel="noopener noreferrer" aria-label="Email" title="Email" data-astro-cid-o2gh7vpa> <svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" data-astro-cid-o2gh7vpa="true"><path fill="currentColor" fill-rule="evenodd" d="M3.172 5.172C2 6.343 2 8.229 2 12s0 5.657 1.172 6.828S6.229 20 10 20h4c3.771 0 5.657 0 6.828-1.172S22 15.771 22 12s0-5.657-1.172-6.828S17.771 4 14 4h-4C6.229 4 4.343 4 3.172 5.172M18.576 7.52a.75.75 0 0 1-.096 1.056l-2.196 1.83c-.887.74-1.605 1.338-2.24 1.746c-.66.425-1.303.693-2.044.693s-1.384-.269-2.045-.693c-.634-.408-1.352-1.007-2.239-1.745L5.52 8.577a.75.75 0 0 1 .96-1.153l2.16 1.799c.933.777 1.58 1.315 2.128 1.667c.529.34.888.455 1.233.455s.704-.114 1.233-.455c.547-.352 1.195-.89 2.128-1.667l2.159-1.8a.75.75 0 0 1 1.056.097" clip-rule="evenodd" /></svg> </a> </li> </ul> <button id="theme-toggle" data-icon-button aria-label="Toggle theme"> <light-icon><svg width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M12 7a5 5 0 1 0 0 10a5 5 0 0 0 0-10" /><path fill="currentColor" fill-rule="evenodd" d="M12 1a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V2a1 1 0 0 1 1-1M3.293 3.293a1 1 0 0 1 1.414 0l1.5 1.5a1 1 0 0 1-1.414 1.414l-1.5-1.5a1 1 0 0 1 0-1.414m17.414 0a1 1 0 0 1 0 1.414l-1.5 1.5a1 1 0 1 1-1.414-1.414l1.5-1.5a1 1 0 0 1 1.414 0M1 12a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2H2a1 1 0 0 1-1-1m19 0a1 1 0 0 1 1-1h1a1 1 0 1 1 0 2h-1a1 1 0 0 1-1-1M6.207 17.793a1 1 0 0 1 0 1.414l-1.5 1.5a1 1 0 0 1-1.414-1.414l1.5-1.5a1 1 0 0 1 1.414 0m11.586 0a1 1 0 0 1 1.414 0l1.5 1.5a1 1 0 0 1-1.414 1.414l-1.5-1.5a1 1 0 0 1 0-1.414M12 20a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1" clip-rule="evenodd" /></svg></light-icon> <dark-icon><svg width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M20.958 15.325c.204-.486-.379-.9-.868-.684a7.7 7.7 0 0 1-3.101.648c-4.185 0-7.577-3.324-7.577-7.425a7.3 7.3 0 0 1 1.134-3.91c.284-.448-.057-1.068-.577-.936C5.96 4.041 3 7.613 3 11.862C3 16.909 7.175 21 12.326 21c3.9 0 7.24-2.345 8.632-5.675" /><path fill="currentColor" d="M15.611 3.103c-.53-.354-1.162.278-.809.808l.63.945a2.33 2.33 0 0 1 0 2.588l-.63.945c-.353.53.28 1.162.81.808l.944-.63a2.33 2.33 0 0 1 2.588 0l.945.63c.53.354 1.162-.278.808-.808l-.63-.945a2.33 2.33 0 0 1 0-2.588l.63-.945c.354-.53-.278-1.162-.809-.808l-.944.63a2.33 2.33 0 0 1-2.588 0z" /></svg></dark-icon> </button>  </sidebar-socials> </sidebar-inner> <sidebar-toggle data-astro-cid-wv7whodv="true"> <post-actions data-astro-cid-q4ja3wfd="true"> <a href="/blog/dspark" data-icon-button data-dir="prev" aria-label="Previous post: DSpark on MAX: making speculative decoding beat vLLM" title="DSpark on MAX: making speculative decoding beat vLLM" data-astro-cid-q4ja3wfd> <svg width="1em" height="1em" viewBox="0 0 256 256" data-astro-cid-q4ja3wfd="true"><path fill="currentColor" d="M228 128a12 12 0 0 1-12 12H69l51.52 51.51a12 12 0 0 1-17 17l-72-72a12 12 0 0 1 0-17l72-72a12 12 0 0 1 17 17L69 116h147a12 12 0 0 1 12 12" /></svg> </a> <a data-icon-button data-dir="next" aria-hidden="true" data-astro-cid-q4ja3wfd> <svg width="1em" height="1em" viewBox="0 0 256 256" data-astro-cid-q4ja3wfd="true"><path fill="currentColor" d="m224.49 136.49l-72 72a12 12 0 0 1-17-17L187 140H40a12 12 0 0 1 0-24h147l-51.49-51.52a12 12 0 0 1 17-17l72 72a12 12 0 0 1-.02 17.01" /></svg> </a> <button data-icon-button data-scroll-top aria-label="Scroll to top" data-astro-cid-p774adf7> <svg width="1em" height="1em" viewBox="0 0 256 256" data-astro-cid-p774adf7="true"><path fill="currentColor" d="M208.49 120.49a12 12 0 0 1-17 0L140 69v147a12 12 0 0 1-24 0V69l-51.51 51.49a12 12 0 0 1-17-17l72-72a12 12 0 0 1 17 0l72 72a12 12 0 0 1 0 17" /></svg> </button>  </post-actions> </sidebar-toggle> </aside> </page-nav> </page-header> <page-content data-astro-cid-ju4pidww="true"> <main data-astro-cid-ju4pidww>   <button data-icon-button data-scroll-top data-floating="true" aria-label="Scroll to top" data-astro-cid-p774adf7> <svg width="1em" height="1em" viewBox="0 0 256 256" data-astro-cid-p774adf7="true"><path fill="currentColor" d="M208.49 120.49a12 12 0 0 1-17 0L140 69v147a12 12 0 0 1-24 0V69l-51.51 51.49a12 12 0 0 1-17-17l72-72a12 12 0 0 1 17 0l72 72a12 12 0 0 1 0 17" /></svg> </button>  <article data-url="/blog/blasst" data-title="Skipping attention blocks was the easy part | Yash Agarwal" data-astro-cid-vvdrgdaw> <header data-astro-cid-vvdrgdaw> <h1 data-astro-cid-vvdrgdaw>Skipping attention blocks was the easy part</h1> <post-meta data-astro-cid-vvdrgdaw="true"> <post-authors data-astro-cid-vvdrgdaw="true"> <author-avatars data-astro-cid-vvdrgdaw="true"> <img src="https://avatars.githubusercontent.com/u/229808023" alt="Yash Agarwal" width="18" height="18" data-astro-cid-vvdrgdaw> </author-avatars> <author-names data-astro-cid-vvdrgdaw="true"> <a href="https://github.com/yashagar-cmu" data-astro-cid-vvdrgdaw>Yash Agarwal</a> </author-names> </post-authors> <time datetime="2026-08-31T00:00:00.000Z" data-astro-cid-vvdrgdaw>Aug 31, 2026</time> <post-commits data-astro-cid-vvdrgdaw="true"> <a href="https://github.com/modular/modular/commit/7fda5d45da2a75cc71d0ba32d65036ef6c5b70e5" title="BLASST kernel" data-astro-cid-vvdrgdaw> 7fda5d45 </a><a href="https://github.com/modular/modular/commit/a670f254521e355748ced6243a5562f50fc6cd9a" title="cross-stage P" data-astro-cid-vvdrgdaw> a670f254 </a> </post-commits> </post-meta> <p data-astro-cid-vvdrgdaw>BLASST block-sparse attention plus one TMEM address swap: −41.9% attention-kernel time at 95% skip and −20% TTFT at 64K with accuracy above dense — an optimization worklog on a B200.</p> </header>  <prose-content data-astro-cid-vvdrgdaw="true"> <p><em>Implementing block-sparse attention took a week. Making it actually pay took a
+month of profiling — and the fix was moving one write address.</em></p>
+<p>At long context, most KV blocks in attention prefill end up with post-softmax
+weights that are numerically negligible. BLASST
+(<a href="https://arxiv.org/abs/2512.12087" target="_blank" rel="nofollow noreferrer noopener">arXiv 2512.12087</a>) is a training-free way
+to skip them: during FlashAttention’s online softmax, statistics you already
+have tell you, per KV block, that its contribution will vanish.</p>
+<aside><aside-title>What the paper reports</aside-title><p>1.52× prefill speedup at ~72% sparsity.</p></aside>
+<p>This summer at Modular I implemented BLASST in MAX’s FlashAttention-4-style
+SM100 (B200) bf16 prefill kernel. The skip mechanism worked within the first
+week, producing exactly the sparsity you dialed in. It was also slower than
+it should have been at every skip rate — +14.8% vs dense when nothing was
+skippable. The rest of the project was finding out why — per-warp
+<code>clock64</code> timelines and Nsight Compute. The fix is a scheduling change called
+<strong>cross-stage P</strong> — it also makes the <em>dense</em> kernel 3.36% faster, and it
+ships default-on.</p>
+<p>We’ll see that the tax is placement, not instruction count; that the missing
+wins were latency the deleted work had hidden; and that one moved write
+address fixes both.</p>
+<h2 id="the-scoreboard">The scoreboard<a data-heading-anchor="" href="#the-scoreboard" aria-label="Link to this section" tabindex="-1"></a></h2>
+<p>One benchmark, tracked throughout; sparsity is dialed synthetically, so the
+skip rate is an input. Attention-kernel time vs
+dense, from the merged PR:</p>
+<aside><aside-title>The bench</aside-title><p><code>bench_mha_sparse.mojo</code>: batch 2, 32 query heads, GQA group 8, head_dim 128,
+seq 8192, bf16, MAG 13000, single B200. Sparsity dials via <code>n_buckets</code>
+buckets of key tags: nb4 ⇒ 76% of blocks skippable, nb16 ⇒ 95%.</p></aside>
+<aside><aside-title>How each cell was measured</aside-title><p>Median of 7 interleaved runs, every ON-vs-OFF pair md5-witnessed — a
+build-cache quirk once produced a silent OFF binary, hence the witnessing.</p></aside>
+<table>
+<thead>
+<tr>
+<th style="text-align: right">skip rate</th>
+<th style="text-align: right">BLASST alone</th>
+<th style="text-align: right">BLASST + cross-P</th>
+<th style="text-align: right">cross-P’s own contribution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right">0% (nb1)</td>
+<td style="text-align: right">+14.8%</td>
+<td style="text-align: right">−0.7%</td>
+<td style="text-align: right">−13.5%</td>
+</tr>
+<tr>
+<td style="text-align: right">51% (nb2)</td>
+<td style="text-align: right">−4.9%</td>
+<td style="text-align: right">−12.8%</td>
+<td style="text-align: right">−8.3%</td>
+</tr>
+<tr>
+<td style="text-align: right">76% (nb4)</td>
+<td style="text-align: right">−20.0%</td>
+<td style="text-align: right">−29.5%</td>
+<td style="text-align: right">−11.9%</td>
+</tr>
+<tr>
+<td style="text-align: right">89% (nb8)</td>
+<td style="text-align: right">−29.0%</td>
+<td style="text-align: right">−37.8%</td>
+<td style="text-align: right">−12.3%</td>
+</tr>
+<tr>
+<td style="text-align: right">95% (nb16)</td>
+<td style="text-align: right">−33.7%</td>
+<td style="text-align: right">−41.9%</td>
+<td style="text-align: right">−12.3%</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="Kernel speedup ladder: BLASST alone vs BLASST + cross-P at each skip rate, with cross-P helping at every rung and closing the 0-skip tax from +14.8% to −0.7%" loading="lazy" decoding="async" width="920" height="460" src="/_astro/kernel-speedup-ladder.amdBPv64_Z16qIVj.svg" srcset=""></p>
+<p>Three observations. Cross-P helps at every skip rate, by a roughly constant
+amount (last column). It turns the 0-skip tax into a small net win, which is
+what makes BLASST safe to leave enabled. And skip counts match at every
+threshold — cross-P changes what the kernel does while deciding, not which
+blocks get skipped.</p>
+<p>At the model level (Llama-3.1-8B-Instruct), TTFT at 64K context falls 20.0%
+at a threshold where RULER accuracy lands <em>above</em> the dense baseline. The
+rest of the post derives this table.</p>
+<h2 id="flashattention">FlashAttention<a data-heading-anchor="" href="#flashattention" aria-label="Link to this section" tabindex="-1"></a></h2>
+<p>Attention is matmul → softmax → matmul: scores <math><mrow><mi>S</mi><mo>=</mo><mi>Q</mi><msup><mi>K</mi><mi class="tml-sml-pad">⊤</mi></msup></mrow></math>, weights
+<math><mrow><mi>P</mi><mo>=</mo><mpadded lspace="0"><mi>softmax</mi></mpadded><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mi>S</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></math> row-wise, output <math><mrow><mi>O</mi><mo>=</mo><mi>P</mi><mi>V</mi></mrow></math>. The full score matrix is
+too big to materialize. FlashAttention therefore streams K/V in blocks (128
+keys per block here) and keeps three running statistics per query row: a
+running max <math><mi>m</mi></math> (you exponentiate <math><msup><mi>e</mi><mrow class="tml-sml-pad"><mi>x</mi><mo>−</mo><mi>m</mi></mrow></msup></math> for stability), a running sum of
+exponentials <math><mi>l</mi></math>, and the output accumulator <math><mi>O</mi></math>. A <em>running</em> max creates a
+correction step: when a new block raises it, prior accumulation is rescaled
+by <math><msup><mi>e</mi><mrow class="tml-sml-pad"><msub><mi>m</mi><mrow><mi>o</mi><mi>l</mi><mi>d</mi></mrow></msub><mo>−</mo><msub><mi>m</mi><mrow><mi>n</mi><mi>e</mi><mi>w</mi></mrow></msub></mrow></msup></math>; if the max doesn’t move, the factor is exactly 1 —
+a no-op.</p>
+<p>MAX’s FA4-style SM100 kernel
+(<code>max/kernels/src/nn/attention/gpu/nvidia/sm100/</code>) is warp-specialized — a
+pipeline of roles over KV blocks <math><mi>j</mi></math>:</p>
+<ul>
+<li>the load warp TMAs <math><msub><mi>K</mi><mi>j</mi></msub></math>/<math><msub><mi>V</mi><mi>j</mi></msub></math> from HBM into shared memory;</li>
+<li>the MMA warp issues every tensor-core matmul: <math><mrow><mi>S</mi><mo>=</mo><mi>Q</mi><msubsup><mi>K</mi><mi>j</mi><mi class="tml-sml-pad">⊤</mi></msubsup></mrow></math> into TMEM
+(SM100’s on-chip accumulator memory), and later <math><mrow><mi>O</mi><mo lspace="0.2778em" rspace="0em">+</mo><mo lspace="0em">=</mo><mi>P</mi><msub><mi>V</mi><mi>j</mi></msub></mrow></math>;</li>
+<li>two softmax warpgroups, one query tile each — the “2Q” split — read S out
+of TMEM, take the row max, compute exp2, store P back to TMEM;</li>
+<li>the correction warpgroup rescales <math><mrow><mi>O</mi><mo>×</mo><msub><mi>c</mi><mi>j</mi></msub></mrow></math> in place.</li>
+</ul>
+<aside><aside-title>The roster</aside-title><p>w13 is the load warp, w12 the MMA warp, w0–7 the two softmax warpgroups,
+w8–11 the correction warpgroup — the row labels in every timeline below.</p></aside>
+<aside><aside-title>One combined barrier</aside-title><p>The <math><mrow><mi>O</mi><mo lspace="0.2778em" rspace="0em">+</mo><mo lspace="0em">=</mo><mi>P</mi><msub><mi>V</mi><mi>j</mi></msub></mrow></math> issue waits on a single 256-count mbarrier:
+P stored <em>and</em> O rescaled.</p></aside>
+<p><img alt="FA4 per-block dataflow: load, MMA, softmax, and correction warps connected by mbarriers, with the BLASST vote annotated at the rowmax step" loading="lazy" decoding="async" width="1200" height="660" src="/_astro/fa4-dataflow.gmiD_ddR_18BcNW.svg" srcset=""></p>
+<p>Why two query tiles? Each tile’s <code>QKᵀ → exp2 → P·V</code> is a dependent chain, and
+during exp2 the tensor cores would idle. The tiles share only the streamed
+K/V, so each tile’s exp2 hides behind the <em>other</em>’s matmuls.</p>
+<p><img alt="Conceptual FA4 prefill schedule, dense vs skipping: two query tiles over four KV blocks; a skipped block removes EX2, P·V, and correction slots but QKᵀ always runs" loading="lazy" decoding="async" width="1040" height="510" src="/_astro/fa4-prefill-schedule.O1mekCN6_Z16SdHI.svg" srcset=""></p>
+<p>That schedule is static. BLASST empties slots out of it.</p>
+<h2 id="vote-then-skip">Vote, then skip<a data-heading-anchor="" href="#vote-then-skip" aria-label="Link to this section" tabindex="-1"></a></h2>
+<p>During online softmax you already hold a block’s local max <math><msub><mover><mi>m</mi><mo stretchy="false" style="math-depth:0;">~</mo></mover><mi>j</mi></msub></math> and
+the running max <math><mi>m</mi></math>. The BLASST rule: if</p>
+<p><math><mrow><msub><mover><mi>m</mi><mo stretchy="false" style="math-depth:0;">~</mo></mover><mi>j</mi></msub><mo>−</mo><mi>m</mi><mo>&lt;</mo><mrow><mi>ln</mi><mo>⁡</mo><mspace width="0.1667em"></mspace></mrow><mi>λ</mi></mrow></math></p>
+<p>then every post-softmax weight in the block is at most <math><mi>λ</mi></math> — negligible —
+so its exp2, row-sum, P store, and <math><mrow><mi>P</mi><mi>V</mi></mrow></math> matmul can all go. A skipped block
+never raises the running max, so its correction factor is exactly 1.0 and the
+running statistics stay <em>exact</em>. One scalar <math><mi>λ</mi></math> controls everything.</p>
+<aside><aside-title>MAG units</aside-title><p>In the kernel, <math><mi>λ</mi></math> rides as a compile define in milli-log-units:
+MAG 2500 means <math><mrow><mrow><mi>ln</mi><mo>⁡</mo><mspace width="0.1667em"></mspace></mrow><mi>λ</mi><mo>=</mo><mo form="prefix" stretchy="false">−</mo><mn>2.5</mn></mrow></math>. Larger MAG, fewer skips.</p></aside>
+<p>Prefill is compute-bound, so the win is the removed exp2/FP math and P·V
+tensor-core work — V still gets loaded. The real kernel work is turning a
+per-<em>row</em> test into a per-<em>block</em> skip: exp2 and P·V execute collectively,
+128 rows per warpgroup, one monolithic matmul. The test also needs a <em>true</em>
+running max, so a second one exists solely for the vote — the kernel’s own is
+lazy.</p>
+<aside><aside-title>Decode is a different win</aside-title><p>Decode is memory-bandwidth-bound; the shipping decode kernels additionally
+gate the V load from HBM — bytes, not FLOPs. This project is the prefill
+side.</p></aside>
+<aside><aside-title>The lazy max</aside-title><p>An optimization lets the kernel’s row max lag the true max by up to <math><msup><mn>2</mn><mn>8</mn></msup></math>
+before rescaling. Feeding it to the threshold would silently shrink the
+effective <math><mi>λ</mi></math> by up to 256×. The lazy one still drives exp2, as before.</p></aside>
+<p>As landed:</p>
+<p><img alt="BLASST vote mechanism: per-lane threshold test against a true running max, warp ballot vote-ALL, smem vote slots, warpgroup named barrier, and the 0x01010101 unanimity read" loading="lazy" decoding="async" width="830" height="340" src="/_astro/blasst-vote-mechanism.B7TdFU3m_1KtJv.svg" srcset=""></p>
+<ul>
+<li><strong>Warp ballot, vote-ALL.</strong> Each lane tests its rows; <code>VOTE.ALL</code> ANDs 32
+lanes in one instruction. One row that wants the block vetoes the skip —
+that unanimity is the “blocked” in BLASST.</li>
+<li><strong>Warpgroup unanimity via smem.</strong> Lane 0 of each warp publishes its bit to
+a shared-memory slot; after a warpgroup <code>named_barrier</code>, all 128 threads
+read the four bits back; the skip needs unanimity.</li>
+<li><strong>On a skip.</strong> A stripped <code>store_exp_skip</code> runs — no exp2, no row-sum, no P
+store, correction written as identity — and <em>every</em> mbarrier arrival is
+preserved so the pipeline never desynchronizes. The MMA warp elides only
+the P·V. <math><mrow><mi>Q</mi><msup><mi>K</mi><mi class="tml-sml-pad">⊤</mi></msup></mrow></math> and the V loads always run: the scores feed the decision
+itself, which also caps prefill speedup near 1.8× regardless of sparsity.</li>
+</ul>
+<aside><aside-title>The vote slots</aside-title><p>A 16-byte shared region — 2 warpgroups × 2 pipeline phases × 4 warps,
+double-buffered. The readback is four bytes as one <code>UInt32 == 0x01010101</code>.</p></aside>
+<aside><aside-title>One-tile skips</aside-title><p>The two tiles vote independently and the schedule is static, so wall-clock
+compresses when <em>both</em> tiles skip a block; a one-tile skip mostly becomes a
+bubble. Realized speedup tracks <em>correlated</em> skipping, not raw skip count.</p></aside>
+<aside><aside-title>Opt-in wiring</aside-title><p>The feature is opt-in (<code>ENABLE_BLASST</code>), and a serving hook injects the
+compile defines per session — no rebuild.</p></aside>
+<p>The scoreboard says the sparsity arrived and the time didn’t; seeing why
+takes instruments.</p>
+<h2 id="the-instruments">The instruments<a data-heading-anchor="" href="#the-instruments" aria-label="Link to this section" tabindex="-1"></a></h2>
+<p>Per-warp <code>clock64</code> timelines: gated instrumentation stamps every warp’s step
+boundaries; one recording CTA’s stamps render as a gantt: one row per
+warp, one colored span per step.</p>
+<aside><aside-title>Reading the gantts</aside-title><p>Rows: w0–3 softmax tile A, w4–7 tile B, w8–11 correction, w12 MMA, w13 load.
+Per softmax warp each block renders as light-blue <em>wait</em> (idle until S
+arrives), dark-blue <em>A1/B1</em> (score read-out + row-max), orange <em>A2/B2</em>
+(exp2 → P), and a pink <em>A3/B3</em> store sliver. With BLASST on: purple <em>DEC</em>
+(the vote) and pale-orange <em>skipped</em> blocks. On the MMA lane, green is P·V
+wait/issue and a red tick a skipped P·V.</p></aside>
+<aside><aside-title>Capture config</aside-title><p>The captures below: seq 2048, batch 1. DEC spans the full vote:
+max-reduce → publish → warpgroup barrier → resolve.</p></aside>
+<p>The instrument perturbs what it measures and is only common-mode within one
+build. So the standing rule: gantts for structure, NCU and md5-witnessed
+benchmarks for magnitudes.</p>
+<aside><aside-title>When the instrument lied</aside-title><p>In one cross-build comparison the instrumented span moved −8.5% while the
+real benchmark moved +1.4%. An instrument that isn’t common-mode across the
+diff doesn’t get a vote.</p></aside>
+<aside><aside-title>Dilation self-check</aside-title><p>PR-stated caveat for the gantt pairs below: the dense pair passes its
+dilation self-check; the nb4 pair fails it — read shapes, not lengths.</p></aside>
+<p>Nsight Compute (base clocks, matched md5-witnessed binaries) frames
+everything with its first result. Dense at 64K context: SM compute throughput
+89.6% of peak, memory not the constraint — the kernel is compute-bound.</p>
+<aside><aside-title>Pipe-level detail</aside-title><p>Dense, 64K (NCU): tensor pipe (<math><mrow><mi>Q</mi><msup><mi>K</mi><mi class="tml-sml-pad">⊤</mi></msup></mrow></math>) 87%, exp2/FP pipe 66%, memory SoL
+32.5%, L2 hit rate 99.1%.</p></aside>
+<p>At 94% skip, exp2 instructions fall 93.8% while TMEM score reads (<code>LDTM</code>)
+stay byte-identical — BLASST wins by deleting the pacing compute. The problem
+was everything around it.</p>
+<aside><aside-title>At base clock</aside-title><p>Wall-clock at 94% skip: −23% in the base-clock NCU runs.</p></aside>
+<h2 id="evidence-part-1">Evidence, part 1<a data-heading-anchor="" href="#evidence-part-1" aria-label="Link to this section" tabindex="-1"></a></h2>
+<p>Dense, everything off:</p>
+<p><img alt="Measured clock64 gantt, dense baseline: every softmax warp’s block starts with a light-blue wait segment before A1, followed by a long orange exp2 span; the MMA lane mostly waits on P" loading="lazy" decoding="async" width="2400" height="960" src="/_astro/gantt_cmp_A15_off.BRf-ASuW_192BvH.webp" srcset=""></p>
+<p>Two readings. Exp2 (orange) is the long pole on the softmax lanes —
+consistent with NCU. And every block on every softmax warp begins with a
+light-blue wait for scores. In steady state, S lands roughly 800
+cycles <em>after</em> the previous block’s exp2 ends — early on 0 of 62 measured
+blocks. Scores are always just-in-time. Dense doesn’t much care; the wait
+hides behind other work.</p>
+<p><img alt="Zoomed dense gantt: repeating wait → A1 → A2 → A3 pattern per softmax warp across KV blocks L8 to L15, with tile-B steps offset half a period" loading="lazy" decoding="async" width="2400" height="960" src="/_astro/gantt_off_zoom_A15.ONRK7mQZ_Z26zSDS.webp" srcset=""></p>
+<p>Now BLASST at 76% skip (nb4), no cross-P:</p>
+<p><img alt="Measured clock64 gantt, BLASST nb4: purple DEC vote spans follow every A1, skipped blocks show as short pale spans, red SKIP ticks appear on the MMA lane, and the light-blue waits have grown to dominate the softmax lanes" loading="lazy" decoding="async" width="2400" height="960" src="/_astro/gantt_cmp_A15_blasst_nb4.C87bRfhr_1ojV3L.webp" srcset=""></p>
+<p>The machinery works: purple DEC spans follow each A1, skipped blocks collapse
+to pale slivers, red ticks mark elided P·Vs. But light blue now dominates the
+softmax lanes. The kernel deleted most of its exp2 and turned much of the
+saving into waiting. A skipped block runs wait → A1 → DEC → skip, and the
+wait is the biggest piece.</p>
+<p><img alt="Zoomed BLASST nb4 gantt: skipped blocks reduced to wait, A1, DEC, and a skip sliver, with the wait the largest single component per block" loading="lazy" decoding="async" width="2400" height="960" src="/_astro/gantt_blasst_nb4_zoom_A15.Bok4KXfT_2ghykK.webp" srcset=""></p>
+<p>Two questions remain, and they share an answer. Why does BLASST
+cost +14.8% when <em>nothing</em> is skipped? And why does deleted work turn into
+waiting instead of wall-clock time?</p>
+<h2 id="the-0-skip-tax">The 0-skip tax<a data-heading-anchor="" href="#the-0-skip-tax" aria-label="Link to this section" tabindex="-1"></a></h2>
+<p>The 0-skip question first; NCU answers it definitively. The vote adds
+instructions on the softmax lanes. The obvious hypothesis: too many of them.
+So I deleted some — a cleanup collapsed the tile-max reduction from two full
+fragment reductions to one, removing 3.10M max-family instructions, the
+single largest adder. Cycles moved 0%. The instruction count fell, CPI rose
+to compensate, and their product held constant to three decimals. The
+instructions were free.</p>
+<aside><aside-title>The vote’s instruction bill</aside-title><p>Max reduce, subtract-compare, ballot, smem write, barrier, readback — each
+roughly +1.03M executed instructions: 8 softmax warps × 63 blocks × 2048
+CTAs.</p></aside>
+<aside><aside-title>Same tax, two kernels</aside-title><p>These sessions ran on the pre-rebase kernel, where the tax measured ~15.7%
+(+15.65% → +15.74% across the deletion, within cross-session variance);
++14.8% is the same tax on the final shipped code. Instruction overhead fell
++4.1% → +3.6%.</p></aside>
+<p>The cost is <em>where they sit</em>: the decision chain</p>
+<div class="expressive-code"><style>.expressive-code{font-family:var(--ec-uiFontFml);font-size:var(--ec-uiFontSize);font-weight:var(--ec-uiFontWg);line-height:var(--ec-uiLineHt);text-size-adjust:none;-webkit-text-size-adjust:none}.expressive-code *:not(:is(svg, svg *)){all:revert;box-sizing:border-box}.expressive-code pre{display:flex;margin:0;padding:0;border:var(--ec-brdWd) solid var(--ec-brdCol);border-radius:calc(var(--ec-brdRad) + var(--ec-brdWd));background:var(--ec-codeBg)}.expressive-code pre:focus-visible{outline:3px solid var(--ec-focusBrd);outline-offset:-3px}.expressive-code pre > code{all:unset;display:block;flex:1 0 100%;padding:var(--ec-codePadBlk) 0;color:var(--ec-codeFg);font-family:var(--ec-codeFontFml);font-size:var(--ec-codeFontSize);font-weight:var(--ec-codeFontWg);line-height:var(--ec-codeLineHt)}.expressive-code pre{overflow-x:auto}.expressive-code pre.wrap .ec-line .code{white-space:pre-wrap;overflow-wrap:break-word;min-width:min(20ch, var(--ecMaxLine, 20ch))}.expressive-code pre.wrap .ec-line .code span.indent{white-space:pre}.expressive-code pre::-webkit-scrollbar,.expressive-code pre::-webkit-scrollbar-track{background-color:inherit;border-radius:calc(var(--ec-brdRad) + var(--ec-brdWd));border-top-left-radius:0;border-top-right-radius:0}.expressive-code pre::-webkit-scrollbar-thumb{background-color:var(--ec-sbThumbCol);border:4px solid transparent;background-clip:content-box;border-radius:10px}.expressive-code pre::-webkit-scrollbar-thumb:hover{background-color:var(--ec-sbThumbHoverCol)}.expressive-code .ec-line{direction:ltr;unicode-bidi:isolate;display:grid;grid-template-areas:'gutter code';grid-template-columns:auto 1fr;position:relative}.expressive-code .ec-line .gutter{grid-area:gutter;color:var(--ec-gtrFg)}.expressive-code .ec-line .gutter > *{pointer-events:none;user-select:none;-webkit-user-select:none}.expressive-code .ec-line .gutter ~ .code{--ecLineBrdCol:var(--ec-gtrBrdCol)}.expressive-code .ec-line.highlight .gutter{color:var(--ec-gtrHlFg)}.expressive-code .ec-line .code{grid-area:code;position:relative;box-sizing:content-box;padding-inline-start:calc(var(--ecIndent, 0ch) + var(--ec-codePadInl) - var(--ecGtrBrdWd));padding-inline-end:var(--ec-codePadInl);text-indent:calc(var(--ecIndent, 0ch) * -1)}.expressive-code .ec-line .code::before,.expressive-code .ec-line .code::after,.expressive-code .ec-line .code :where(*){text-indent:0}.expressive-code .ec-line .code{--ecGtrBrdWd:var(--ec-gtrBrdWd);border-inline-start:var(--ecGtrBrdWd) solid var(--ecLineBrdCol, transparent)}.expressive-code .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0, 0, 0, 0);white-space:nowrap;border-width:0}.expressive-code .ec-line.mark{--tmLineBgCol:var(--ec-tm-markBg)}.expressive-code .ec-line.mark .code{--ecLineBrdCol:var(--ec-tm-markBrdCol)}.expressive-code .ec-line.ins{--tmLineBgCol:var(--ec-tm-insBg);--tmLabel:var(--ec-tm-insDiffIndContent)}.expressive-code .ec-line.ins .code{--ecLineBrdCol:var(--ec-tm-insBrdCol)}.expressive-code .ec-line.ins .code::before{color:var(--ec-tm-insDiffIndCol)}.expressive-code .ec-line.del{--tmLineBgCol:var(--ec-tm-delBg);--tmLabel:var(--ec-tm-delDiffIndContent)}.expressive-code .ec-line.del .code{--ecLineBrdCol:var(--ec-tm-delBrdCol)}.expressive-code .ec-line.del .code::before{color:var(--ec-tm-delDiffIndCol)}.expressive-code .ec-line.mark,.expressive-code .ec-line.ins,.expressive-code .ec-line.del{background:var(--tmLineBgCol)}.expressive-code .ec-line.mark .code,.expressive-code .ec-line.ins .code,.expressive-code .ec-line.del .code{--ecGtrBrdWd:var(--ec-tm-lineMarkerAccentWd)}.expressive-code .ec-line.mark .code::before,.expressive-code .ec-line.ins .code::before,.expressive-code .ec-line.del .code::before{display:block;position:absolute;left:0;box-sizing:border-box;content:var(--tmLabel, ' ');padding-inline-start:var(--ec-tm-lineDiffIndMargLeft);text-align:center;white-space:pre}.expressive-code .ec-line.mark.tm-label .code::before,.expressive-code .ec-line.ins.tm-label .code::before,.expressive-code .ec-line.del.tm-label .code::before{background:var(--ecLineBrdCol);padding:0 calc(var(--ec-tm-lineMarkerLabelPadInl) + var(--ec-tm-lineMarkerAccentWd)) 0 var(--ec-tm-lineMarkerLabelPadInl);color:var(--ec-tm-lineMarkerLabelCol)}.expressive-code .ec-line mark{--tmInlineBgCol:var(--ec-tm-markBg);--tmInlineBrdCol:var(--ec-tm-markBrdCol)}.expressive-code .ec-line ins{--tmInlineBgCol:var(--ec-tm-insBg);--tmInlineBrdCol:var(--ec-tm-insBrdCol)}.expressive-code .ec-line del{--tmInlineBgCol:var(--ec-tm-delBg);--tmInlineBrdCol:var(--ec-tm-delBrdCol)}.expressive-code .ec-line mark,.expressive-code .ec-line ins,.expressive-code .ec-line del{all:unset;display:inline-block;position:relative;--tmBrdL:var(--ec-tm-inlMarkerBrdWd);--tmBrdR:var(--ec-tm-inlMarkerBrdWd);--tmRadL:var(--ec-tm-inlMarkerBrdRad);--tmRadR:var(--ec-tm-inlMarkerBrdRad);margin-inline:0.025rem;padding-inline:var(--ec-tm-inlMarkerPad);border-radius:var(--tmRadL) var(--tmRadR) var(--tmRadR) var(--tmRadL);background:var(--tmInlineBgCol);background-clip:padding-box}.expressive-code .ec-line mark.open-start,.expressive-code .ec-line ins.open-start,.expressive-code .ec-line del.open-start{margin-inline-start:0;padding-inline-start:0;--tmBrdL:0px;--tmRadL:0}.expressive-code .ec-line mark.open-end,.expressive-code .ec-line ins.open-end,.expressive-code .ec-line del.open-end{margin-inline-end:0;padding-inline-end:0;--tmBrdR:0px;--tmRadR:0}.expressive-code .ec-line mark::before,.expressive-code .ec-line ins::before,.expressive-code .ec-line del::before{content:'';position:absolute;pointer-events:none;display:inline-block;inset:0;border-radius:var(--tmRadL) var(--tmRadR) var(--tmRadR) var(--tmRadL);border:var(--ec-tm-inlMarkerBrdWd) solid var(--tmInlineBrdCol);border-inline-width:var(--tmBrdL) var(--tmBrdR)}.expressive-code .frame{all:unset;position:relative;display:block;--header-border-radius:calc(var(--ec-brdRad) + var(--ec-brdWd));--tab-border-radius:calc(var(--ec-frm-edTabBrdRad) + var(--ec-brdWd));--button-spacing:0.4rem;--code-background:var(--ec-frm-edBg);border-radius:var(--header-border-radius);box-shadow:var(--ec-frm-frameBoxShdCssVal)}.expressive-code .frame .header{display:none;z-index:1;position:relative;border-radius:var(--header-border-radius) var(--header-border-radius) 0 0}.expressive-code .frame.has-title pre,.expressive-code .frame.has-title code,.expressive-code .frame.is-terminal pre,.expressive-code .frame.is-terminal code{border-top:none;border-top-left-radius:0;border-top-right-radius:0}.expressive-code .frame .title:empty:before{content:'\a0'}.expressive-code .frame.has-title:not(.is-terminal){--button-spacing:calc(1.9rem + 2 * (var(--ec-uiPadBlk) + var(--ec-frm-edActTabIndHt)))}.expressive-code .frame.has-title:not(.is-terminal) .title{position:relative;color:var(--ec-frm-edActTabFg);background:var(--ec-frm-edActTabBg);background-clip:padding-box;margin-block-start:var(--ec-frm-edTabsMargBlkStart);padding:calc(var(--ec-uiPadBlk) + var(--ec-frm-edActTabIndHt)) var(--ec-uiPadInl);border:var(--ec-brdWd) solid var(--ec-frm-edActTabBrdCol);border-radius:var(--tab-border-radius) var(--tab-border-radius) 0 0;border-bottom:none;overflow:hidden}.expressive-code .frame.has-title:not(.is-terminal) .title::after{content:'';position:absolute;pointer-events:none;inset:0;border-top:var(--ec-frm-edActTabIndHt) solid var(--ec-frm-edActTabIndTopCol);border-bottom:var(--ec-frm-edActTabIndHt) solid var(--ec-frm-edActTabIndBtmCol)}.expressive-code .frame.has-title:not(.is-terminal) .header{display:flex;background:linear-gradient(to top, var(--ec-frm-edTabBarBrdBtmCol) var(--ec-brdWd), transparent var(--ec-brdWd)),linear-gradient(var(--ec-frm-edTabBarBg), var(--ec-frm-edTabBarBg));background-repeat:no-repeat;padding-inline-start:var(--ec-frm-edTabsMargInlStart)}.expressive-code .frame.has-title:not(.is-terminal) .header::before{content:'';position:absolute;pointer-events:none;inset:0;border:var(--ec-brdWd) solid var(--ec-frm-edTabBarBrdCol);border-radius:inherit;border-bottom:none}.expressive-code .frame.is-terminal{--button-spacing:calc(1.9rem + var(--ec-brdWd) + 2 * var(--ec-uiPadBlk));--code-background:var(--ec-frm-trmBg)}.expressive-code .frame.is-terminal .header{display:flex;align-items:center;justify-content:center;padding-block:var(--ec-uiPadBlk);padding-block-end:calc(var(--ec-uiPadBlk) + var(--ec-brdWd));position:relative;font-weight:500;letter-spacing:0.025ch;color:var(--ec-frm-trmTtbFg);background:var(--ec-frm-trmTtbBg);border:var(--ec-brdWd) solid var(--ec-brdCol);border-bottom:none}.expressive-code .frame.is-terminal .header::before{content:'';position:absolute;pointer-events:none;left:var(--ec-uiPadInl);width:2.1rem;height:0.56rem;line-height:0;background-color:var(--ec-frm-trmTtbDotsFg);opacity:var(--ec-frm-trmTtbDotsOpa);-webkit-mask-image:var(--ec-frm-trmIcon);-webkit-mask-repeat:no-repeat;mask-image:var(--ec-frm-trmIcon);mask-repeat:no-repeat}.expressive-code .frame.is-terminal .header::after{content:'';position:absolute;pointer-events:none;inset:0;border-bottom:var(--ec-brdWd) solid var(--ec-frm-trmTtbBrdBtmCol)}.expressive-code .frame pre{background:var(--code-background)}.expressive-code .copy{display:flex;gap:0.25rem;flex-direction:row;position:absolute;inset-block-start:calc(var(--ec-brdWd) + var(--button-spacing));inset-inline-end:calc(var(--ec-brdWd) + var(--ec-uiPadInl) / 2)}@media (scripting: none){.expressive-code .copy{display:none}}.expressive-code .copy{direction:ltr;unicode-bidi:isolate}.expressive-code .copy button{position:relative;align-self:flex-end;margin:0;padding:0;border:none;border-radius:0.2rem;z-index:1;cursor:pointer;transition-property:opacity, background, border-color;transition-duration:0.2s;transition-timing-function:cubic-bezier(0.25, 0.46, 0.45, 0.94);width:2.5rem;height:2.5rem;background:var(--code-background);opacity:0.75}.expressive-code .copy button div{position:absolute;inset:0;border-radius:inherit;background:var(--ec-frm-inlBtnBg);opacity:var(--ec-frm-inlBtnBgIdleOpa);transition-property:inherit;transition-duration:inherit;transition-timing-function:inherit}.expressive-code .copy button::before{content:'';position:absolute;pointer-events:none;inset:0;border-radius:inherit;border:var(--ec-brdWd) solid var(--ec-frm-inlBtnBrd);opacity:var(--ec-frm-inlBtnBrdOpa)}.expressive-code .copy button::after{content:'';position:absolute;pointer-events:none;inset:0;background-color:var(--ec-frm-inlBtnFg);-webkit-mask-image:var(--ec-frm-copyIcon);-webkit-mask-repeat:no-repeat;mask-image:var(--ec-frm-copyIcon);mask-repeat:no-repeat;margin:0.475rem;line-height:0}.expressive-code .copy button:hover,.expressive-code .copy button:focus:focus-visible{opacity:1}.expressive-code .copy button:hover div,.expressive-code .copy button:focus:focus-visible div{opacity:var(--ec-frm-inlBtnBgHoverOrFocusOpa)}.expressive-code .copy button:active{opacity:1}.expressive-code .copy button:active div{opacity:var(--ec-frm-inlBtnBgActOpa)}.expressive-code .copy .feedback{--tooltip-arrow-size:0.35rem;--tooltip-bg:var(--ec-frm-tooltipSuccessBg);color:var(--ec-frm-tooltipSuccessFg);pointer-events:none;user-select:none;-webkit-user-select:none;position:relative;align-self:center;background-color:var(--tooltip-bg);z-index:99;padding:0.125rem 0.75rem;border-radius:0.2rem;margin-inline-end:var(--tooltip-arrow-size);opacity:0;transition-property:opacity, transform;transition-duration:0.2s;transition-timing-function:ease-in-out;transform:translate3d(0, 0.25rem, 0)}.expressive-code .copy .feedback::after{content:'';position:absolute;pointer-events:none;top:calc(50% - var(--tooltip-arrow-size));inset-inline-end:calc(-2 * (var(--tooltip-arrow-size) - 0.5px));border:var(--tooltip-arrow-size) solid transparent;border-inline-start-color:var(--tooltip-bg)}.expressive-code .copy .feedback.show{opacity:1;transform:translate3d(0, 0, 0)}@media (hover: hover){.expressive-code{}.expressive-code .copy button{opacity:0;width:2rem;height:2rem}.expressive-code .frame:hover .copy button:not(:hover),.expressive-code .frame:focus-within :focus-visible ~ .copy button:not(:hover),.expressive-code .frame .copy .feedback.show ~ button:not(:hover){opacity:0.75}}.expressive-code :nth-child(1 of .ec-line) .code{padding-inline-end:calc(2rem + var(--ec-codePadInl))}.expressive-code .ec-section{position:relative}.expressive-code .ec-section summary{position:relative;font-family:var(--ec-cs-closedFontFml);font-size:var(--ec-cs-closedFontSize);line-height:var(--ec-cs-closedLineHt);user-select:none;-webkit-user-select:none;cursor:pointer;color:var(--ec-cs-closedTextCol);background-color:var(--ec-cs-closedBgCol);--border-color:var(--ec-cs-closedBrdCol);--border-width:var(--ec-cs-closedBrdWd);box-shadow:inset 0 calc(-1 * var(--border-width)) var(--border-color), inset 0 var(--border-width) var(--border-color);margin:var(--ec-cs-closedMarg);padding:0}.expressive-code .ec-section summary::marker{display:inline-block;content:"";width:16px;height:16px}.expressive-code .ec-section summary::-webkit-details-marker{display:none}.expressive-code .ec-section summary :is(.expand, .collapse){position:relative;display:inline-block;width:16px;height:16px;vertical-align:text-bottom;opacity:0.75}.expressive-code .ec-section summary :is(.expand, .collapse)::after{content:'';position:absolute;pointer-events:none;inset:0;background-color:var(--ec-cs-closedTextCol);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;line-height:0}.expressive-code .ec-section summary .expand::after{-webkit-mask-image:var(--ec-cs-expandIcon);mask-image:var(--ec-cs-expandIcon);-webkit-print-color-adjust:exact;print-color-adjust:exact}.expressive-code .ec-section summary .collapse{display:none}.expressive-code .ec-section summary .collapse::after{-webkit-mask-image:var(--ec-cs-collapseIcon);mask-image:var(--ec-cs-collapseIcon)}.expressive-code .ec-section summary .text{margin-left:1em}.expressive-code .ec-section summary .ec-line .code{padding-block:var(--ec-cs-closedPadBlk);text-indent:0}.expressive-code .ec-section[open],.expressive-code .ec-section details[open] + .content-lines{--border-color:var(--ec-cs-openBrdCol);--border-width:var(--ec-cs-openBrdWd);box-shadow:inset 0 calc(-1 * var(--border-width)) var(--border-color), inset 0 var(--border-width) var(--border-color);padding-inline:var(--ec-cs-openPad);margin-inline:var(--ec-cs-openMarg)}.expressive-code .ec-section.github[open] summary{display:none}.expressive-code .ec-section.github[open]{background-color:var(--ec-cs-openBgCol)}.expressive-code .ec-section:is(.collapsible-start, .collapsible-end){display:flex;flex-direction:column}.expressive-code .ec-section:is(.collapsible-start, .collapsible-end) .content-lines{display:none}.expressive-code .ec-section:is(.collapsible-start, .collapsible-end) details[open] .collapse{display:inline-block}.expressive-code .ec-section:is(.collapsible-start, .collapsible-end) details[open] :is(.expand, .text){display:none}.expressive-code .ec-section:is(.collapsible-start, .collapsible-end) details[open] + .content-lines{display:block;background-color:var(--ec-cs-openBgColCollapsible)}@media print{.expressive-code .ec-section:is(.collapsible-start, .collapsible-end) details[open]{display:none}}.expressive-code .ec-section.collapsible-end{flex-direction:column-reverse}.expressive-code .gutter .ln{display:inline-flex;justify-content:flex-end;align-items:flex-start;box-sizing:content-box;min-width:var(--lnWidth, 2ch);padding-inline:2ch;color:var(--ec-lineNumbers-fg)}.highlight .expressive-code .gutter .ln{color:var(--ec-lineNumbers-hlFg)}:root,:root:not([data-theme="light"]) .expressive-code[data-theme="light"]{--ec-brdRad:0px;--ec-brdWd:1.5px;--ec-brdCol:var(--border);--ec-codeFontFml:var(--font-mono);--ec-codeFontSize:var(--step--1);--ec-codeFontWg:400;--ec-codeLineHt:1.65;--ec-codePadBlk:1rem;--ec-codePadInl:1.35rem;--ec-codeBg:color-mix(in oklab, var(--muted) 25%, transparent);--ec-codeFg:#24292e;--ec-codeSelBg:#0366d625;--ec-gtrFg:#1b1f234d;--ec-gtrBrdCol:#1b1f2333;--ec-gtrBrdWd:1.5px;--ec-gtrHlFg:#24292e;--ec-uiFontFml:var(--font-sans);--ec-uiFontSize:0.9rem;--ec-uiFontWg:400;--ec-uiLineHt:1.65;--ec-uiPadBlk:0.25rem;--ec-uiPadInl:1rem;--ec-uiSelBg:#e2e5e9;--ec-uiSelFg:#2f363d;--ec-focusBrd:#2188ff;--ec-sbThumbCol:#959da533;--ec-sbThumbHoverCol:#959da544;--ec-tm-lineMarkerAccentMarg:0rem;--ec-tm-lineMarkerAccentWd:0.15rem;--ec-tm-lineMarkerLabelPadInl:0.2rem;--ec-tm-lineMarkerLabelCol:var(--foreground);--ec-tm-lineDiffIndMargLeft:0.3rem;--ec-tm-inlMarkerBrdWd:1.5px;--ec-tm-inlMarkerBrdRad:0.2rem;--ec-tm-inlMarkerPad:0.15rem;--ec-tm-insDiffIndContent:'+';--ec-tm-delDiffIndContent:'-';--ec-tm-markBg:#95b6ff40;--ec-tm-markBrdCol:#4470c440;--ec-tm-insBg:#89c97740;--ec-tm-insBrdCol:#41803440;--ec-tm-insDiffIndCol:#2b6c20d0;--ec-tm-delBg:#ff988940;--ec-tm-delBrdCol:#ba514640;--ec-tm-delDiffIndCol:#a33c34d0;--ec-frm-shdCol:#00000028;--ec-frm-frameBoxShdCssVal:none;--ec-frm-edActTabBg:transparent;--ec-frm-edActTabFg:var(--muted-foreground);--ec-frm-edActTabBrdCol:transparent;--ec-frm-edActTabIndHt:1.5px;--ec-frm-edActTabIndTopCol:transparent;--ec-frm-edActTabIndBtmCol:transparent;--ec-frm-edTabsMargInlStart:0;--ec-frm-edTabsMargBlkStart:0;--ec-frm-edTabBrdRad:0px;--ec-frm-edTabBarBg:transparent;--ec-frm-edTabBarBrdCol:var(--border);--ec-frm-edTabBarBrdBtmCol:transparent;--ec-frm-edBg:color-mix(in oklab, var(--muted) 25%, transparent);--ec-frm-trmTtbFg:var(--muted-foreground);--ec-frm-trmTtbDotsFg:var(--muted-foreground);--ec-frm-trmTtbDotsOpa:0.15;--ec-frm-trmTtbBg:transparent;--ec-frm-trmTtbBrdBtmCol:transparent;--ec-frm-trmBg:color-mix(in oklab, var(--muted) 25%, transparent);--ec-frm-inlBtnFg:#24292e;--ec-frm-inlBtnBg:#24292e;--ec-frm-inlBtnBgIdleOpa:0;--ec-frm-inlBtnBgHoverOrFocusOpa:0.2;--ec-frm-inlBtnBgActOpa:0.3;--ec-frm-inlBtnBrd:#24292e;--ec-frm-inlBtnBrdOpa:0.4;--ec-frm-tooltipSuccessBg:#208638;--ec-frm-tooltipSuccessFg:white;--ec-frm-copyIcon:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'1.75'%3E%3Cpath%20d%3D'M3%2019a2%202%200%200%201-1-2V2a2%202%200%200%201%201-1h13a2%202%200%200%201%202%201'%2F%3E%3Crect%20x%3D'6'%20y%3D'5'%20width%3D'16'%20height%3D'18'%20rx%3D'1.5'%20ry%3D'1.5'%2F%3E%3C%2Fsvg%3E");--ec-frm-trmIcon:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2060%2016'%20preserveAspectRatio%3D'xMidYMid%20meet'%3E%3Ccircle%20cx%3D'8'%20cy%3D'8'%20r%3D'8'%2F%3E%3Ccircle%20cx%3D'30'%20cy%3D'8'%20r%3D'8'%2F%3E%3Ccircle%20cx%3D'52'%20cy%3D'8'%20r%3D'8'%2F%3E%3C%2Fsvg%3E");--ec-cs-closedBrdWd:0px;--ec-cs-closedPadBlk:4px;--ec-cs-closedMarg:0;--ec-cs-closedFontFml:var(--font-sans);--ec-cs-closedFontSize:inherit;--ec-cs-closedLineHt:inherit;--ec-cs-closedTextCol:#24292e;--ec-cs-closedBgCol:#d1d5da33;--ec-cs-closedBrdCol:#d1d5da80;--ec-cs-openBrdWd:1px;--ec-cs-openPad:0;--ec-cs-openMarg:0;--ec-cs-openBgCol:transparent;--ec-cs-openBgColCollapsible:#d1d5da1a;--ec-cs-openBrdCol:transparent;--ec-cs-expandIcon:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2016%2016'%3E%3Cpath%20d%3D'm8.177.677%202.896%202.896a.25.25%200%200%201-.177.427H8.75v1.25a.75.75%200%200%201-1.5%200V4H5.104a.25.25%200%200%201-.177-.427L7.823.677a.25.25%200%200%201%20.354%200ZM7.25%2010.75a.75.75%200%200%201%201.5%200V12h2.146a.25.25%200%200%201%20.177.427l-2.896%202.896a.25.25%200%200%201-.354%200l-2.896-2.896A.25.25%200%200%201%205.104%2012H7.25v-1.25Zm-5-2a.75.75%200%200%200%200-1.5h-.5a.75.75%200%200%200%200%201.5h.5ZM6%208a.75.75%200%200%201-.75.75h-.5a.75.75%200%200%201%200-1.5h.5A.75.75%200%200%201%206%208Zm2.25.75a.75.75%200%200%200%200-1.5h-.5a.75.75%200%200%200%200%201.5h.5ZM12%208a.75.75%200%200%201-.75.75h-.5a.75.75%200%200%201%200-1.5h.5A.75.75%200%200%201%2012%208Zm2.25.75a.75.75%200%200%200%200-1.5h-.5a.75.75%200%200%200%200%201.5h.5Z'%2F%3E%3C%2Fsvg%3E");--ec-cs-collapseIcon:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2016%2016'%3E%3Cpath%20d%3D'M10.896%202H8.75V.75a.75.75%200%200%200-1.5%200V2H5.104a.25.25%200%200%200-.177.427l2.896%202.896a.25.25%200%200%200%20.354%200l2.896-2.896A.25.25%200%200%200%2010.896%202ZM8.75%2015.25a.75.75%200%200%201-1.5%200V14H5.104a.25.25%200%200%201-.177-.427l2.896-2.896a.25.25%200%200%201%20.354%200l2.896%202.896a.25.25%200%200%201-.177.427H8.75v1.25Zm-6.5-6.5a.75.75%200%200%200%200-1.5h-.5a.75.75%200%200%200%200%201.5h.5ZM6%208a.75.75%200%200%201-.75.75h-.5a.75.75%200%200%201%200-1.5h.5A.75.75%200%200%201%206%208Zm2.25.75a.75.75%200%200%200%200-1.5h-.5a.75.75%200%200%200%200%201.5h.5ZM12%208a.75.75%200%200%201-.75.75h-.5a.75.75%200%200%201%200-1.5h.5A.75.75%200%200%201%2012%208Zm2.25.75a.75.75%200%200%200%200-1.5h-.5a.75.75%200%200%200%200%201.5h.5Z'%2F%3E%3C%2Fsvg%3E");--ec-lineNumbers-fg:var(--muted-foreground);--ec-lineNumbers-hlFg:inherit}.expressive-code .ec-line :where(span[style^='--']:not([class])),:root:not([data-theme="light"]) .expressive-code[data-theme="light"] .ec-line :where(span[style^='--']:not([class])){color:var(--0, inherit);background-color:var(--0bg, transparent);font-style:var(--0fs, inherit);font-weight:var(--0fw, inherit);text-decoration:var(--0td, inherit)}@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--ec-codeFg:#e1e4e8;--ec-codeSelBg:#3392ff44;--ec-gtrFg:#444d56;--ec-gtrBrdCol:#444d5633;--ec-gtrHlFg:#e1e4e8;--ec-uiSelBg:#39414a;--ec-uiSelFg:#e1e4e8;--ec-focusBrd:#005cc5;--ec-sbThumbCol:#6a737d33;--ec-sbThumbHoverCol:#6a737d44;--ec-tm-markBg:#004a9840;--ec-tm-insBg:#13580c40;--ec-tm-insDiffIndCol:#73b362d0;--ec-tm-delBg:#8b272340;--ec-tm-delDiffIndCol:#f48374d0;--ec-frm-shdCol:#0000005b;--ec-frm-inlBtnFg:#e1e4e8;--ec-frm-inlBtnBg:#e1e4e8;--ec-frm-inlBtnBrd:#e1e4e8;--ec-frm-tooltipSuccessBg:#228739;--ec-cs-closedTextCol:#e1e4e8;--ec-cs-closedBgCol:#58606933;--ec-cs-closedBrdCol:#58606980;--ec-cs-openBgColCollapsible:#5860691a}:root:not([data-theme="light"]) .expressive-code .ec-line :where(span[style^='--']:not([class])){color:var(--1, inherit);background-color:var(--1bg, transparent);font-style:var(--1fs, inherit);font-weight:var(--1fw, inherit);text-decoration:var(--1td, inherit)}}:root[data-theme="dark"] .expressive-code:not([data-theme="light"]),.expressive-code[data-theme="dark"]{--ec-codeFg:#e1e4e8;--ec-codeSelBg:#3392ff44;--ec-gtrFg:#444d56;--ec-gtrBrdCol:#444d5633;--ec-gtrHlFg:#e1e4e8;--ec-uiSelBg:#39414a;--ec-uiSelFg:#e1e4e8;--ec-focusBrd:#005cc5;--ec-sbThumbCol:#6a737d33;--ec-sbThumbHoverCol:#6a737d44;--ec-tm-markBg:#004a9840;--ec-tm-insBg:#13580c40;--ec-tm-insDiffIndCol:#73b362d0;--ec-tm-delBg:#8b272340;--ec-tm-delDiffIndCol:#f48374d0;--ec-frm-shdCol:#0000005b;--ec-frm-inlBtnFg:#e1e4e8;--ec-frm-inlBtnBg:#e1e4e8;--ec-frm-inlBtnBrd:#e1e4e8;--ec-frm-tooltipSuccessBg:#228739;--ec-cs-closedTextCol:#e1e4e8;--ec-cs-closedBgCol:#58606933;--ec-cs-closedBrdCol:#58606980;--ec-cs-openBgColCollapsible:#5860691a}:root[data-theme="dark"] .expressive-code:not([data-theme="light"]) .ec-line :where(span[style^='--']:not([class])),.expressive-code[data-theme="dark"] .ec-line :where(span[style^='--']:not([class])){color:var(--1, inherit);background-color:var(--1bg, transparent);font-style:var(--1fs, inherit);font-weight:var(--1fw, inherit);text-decoration:var(--1td, inherit)}</style><script type="module">try{(()=>{function a(e){if(!e)return;let t=e.getAttribute("tabindex")!==null,r=e.scrollWidth>e.clientWidth;r&&!t?(e.setAttribute("tabindex","0"),e.setAttribute("role","region")):!r&&t&&(e.removeAttribute("tabindex"),e.removeAttribute("role"))}var u=window.requestIdleCallback||(e=>setTimeout(e,1)),s=window.cancelIdleCallback||clearTimeout;function l(e){let t=new Set,r,n;return new ResizeObserver(c=>{c.forEach(o=>t.add(o.target)),r&&clearTimeout(r),n&&s(n),r=setTimeout(()=>{n&&s(n),n=u(()=>{t.forEach(o=>e(o)),t.clear()})},250)})}function i(e,t){e.querySelectorAll?.(".expressive-code pre > code").forEach(r=>{let n=r.parentElement;n&&t.observe(n)})}var d=l(a);i(document,d);var b=new MutationObserver(e=>e.forEach(t=>t.addedNodes.forEach(r=>{i(r,d)})));b.observe(document.body,{childList:!0,subtree:!0});document.addEventListener("astro:page-load",()=>{i(document,d)});})();}catch(e){console.error("[EC] tabindex-js-module failed:",e)}</script><script type="module">try{(()=>{function l(o){let e=document.createElement("pre");Object.assign(e.style,{opacity:"0",pointerEvents:"none",position:"absolute",overflow:"hidden",left:"0",top:"0",width:"20px",height:"20px",webkitUserSelect:"auto",userSelect:"all"}),e.ariaHidden="true",e.textContent=o,document.body.appendChild(e);let a=document.createRange();a.selectNode(e);let n=getSelection();if(!n)return!1;n.removeAllRanges(),n.addRange(a);let r=!1;try{r=document.execCommand("copy")}finally{n.removeAllRanges(),document.body.removeChild(e)}return r}async function u(o){let e=o.currentTarget,a=e.dataset,n=!1,r=a.code.replace(/\u007f/g,`
+`);try{await navigator.clipboard.writeText(r),n=!0}catch{n=l(r)}if(!n||e.parentNode?.querySelector(".feedback"))return;let c=e.parentNode?.querySelector("[aria-live]"),t=document.createElement("div");t.classList.add("feedback"),t.append(a.copied),c.append(t),t.offsetWidth,requestAnimationFrame(()=>t?.classList.add("show"));let s=()=>!t||t.classList.remove("show"),d=()=>{!t||parseFloat(getComputedStyle(t).opacity)>0||(t.remove(),t=void 0)};setTimeout(s,1500),setTimeout(d,2500),e.addEventListener("blur",s),t.addEventListener("transitioncancel",d),t.addEventListener("transitionend",d)}function i(o){o.querySelectorAll?.(".expressive-code .copy button").forEach(e=>e.addEventListener("click",u))}i(document);var m=new MutationObserver(o=>o.forEach(e=>e.addedNodes.forEach(a=>{i(a)})));m.observe(document.body,{childList:!0,subtree:!0});document.addEventListener("astro:page-load",()=>{i(document)});})();}catch(e){console.error("[EC] copy-js-module failed:",e)}</script><figure class="frame"><figcaption class="header"></figcaption><pre data-language="plaintext" class="wrap" style="--ecMaxLine:61ch"><code><div class="ec-line"><div class="gutter"><div class="ln" aria-hidden="true">1</div></div><div class="code"><span style="--0:#24292e;--1:#e1e4e8">LDTM (read S) → max reduce → compare → warp vote → smem write</span></div></div><div class="ec-line" style="--ecIndent:13ch"><div class="gutter"><div class="ln" aria-hidden="true">2</div></div><div class="code"><span class="indent"><span style="--0:#24292e;--1:#e1e4e8">             </span></span><span style="--0:#24292e;--1:#e1e4e8">→ WG barrier → readback → branch</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="LDTM (read S) → max reduce → compare → warp vote → smem write             → WG barrier → readback → branch"><div></div></button></div></figure></div>
+<p>executes serially between the score read and exp2, on the softmax critical
+path — roughly 712 cycles per block (instrumented captures). NCU’s stall view
+agrees: the dominant delta is <code>long_scoreboard</code> where the lengthened chain
+resolves — the vote <em>exposes</em> a pre-existing UMMA→S-read latency that used to
+hide.</p>
+<aside><aside-title>Sympathy stalls</aside-title><p>The stalls pile on the softmax loop-header branch. Occupancy sits at 21.5%,
+and correction- and load-warp waits grow in sympathy.</p></aside>
+<p>So where does the tax sit? Mostly in score arithmetic on the exp2 path —
+about 8.6 points of the ~14 (bench-isolation decomposition, figure), not
+coordination.</p>
+<p><img alt="Zero-skip overhead decomposition: 8.57pp score arithmetic, 4.11pp cross-warp coordination, 1.1pp warp ballot, summing to the +14.8% tax that cross-P later closes to −0.7%" loading="lazy" decoding="async" width="830" height="370" src="/_astro/zero-skip-overhead.DBURanct_Z15yD7j.svg" srcset=""></p>
+<p>I falsified the cheap fixes one by one:</p>
+<table>
+<thead>
+<tr>
+<th>Lever</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Delete the redundant reduction (−3.10M instr)</td>
+<td>perf-neutral — the instructions were latency-hidden</td>
+</tr>
+<tr>
+<td>Drop the warpgroup barrier (per-warp strips, zeroed P)</td>
+<td>recovered ~1.1pp of ~14; <em>raised</em> break-even to ~47% skip</td>
+</tr>
+<tr>
+<td>Skip only the P·V, leave softmax alone</td>
+<td>+8.5% <em>slower</em> at 75% skip — P·V was never on the critical path (~2.3%)</td>
+</tr>
+<tr>
+<td>Offload the decision to the idle correction warps</td>
+<td>dead on inspection: correction wakes at the same S-ready signal — no head start</td>
+</tr>
+</tbody>
+</table>
+<p>The note I wrote at the time: an on-critical-path decision bottoms out around
++8–10% no matter how much coordination you shave. To get the paper’s
+“0-sparsity ≈ free,” the decision must leave the critical path — or the path
+must move.</p>
+<h2 id="why-the-waits-stay">Why the waits stay<a data-heading-anchor="" href="#why-the-waits-stay" aria-label="Link to this section" tabindex="-1"></a></h2>
+<p>So what’s keeping the scores late? The gantt already showed it: scores are
+late <em>by construction</em>.</p>
+<p>TMEM is fully budgeted, so P has nowhere of its own; by default each tile’s P
+overwrites its own S region. P holds S hostage: the buffer can’t accept block
+<math><mrow><mi>i</mi><mo form="prefix" stretchy="false" lspace="0em" rspace="0em">+</mo><mn>1</mn></mrow></math>’s scores until block <math><mi>i</mi></math>’s P, in the same columns, has been stored
+<em>and</em> consumed by P·V. If we trace one tile:</p>
+<div class="expressive-code"><figure class="frame"><figcaption class="header"></figcaption><pre data-language="plaintext" class="wrap" style="--ecMaxLine:81ch"><code><div class="ec-line"><div class="gutter"><div class="ln" aria-hidden="true">1</div></div><div class="code"><span style="--0:#24292e;--1:#e1e4e8">QK(i) → read S(i) → exp2 → store P(i) over S(i) → P·V reads it → only now QK(i+1)</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="QK(i) → read S(i) → exp2 → store P(i) over S(i) → P·V reads it → only now QK(i+1)"><div></div></button></div></figure></div>
+<aside><aside-title>The TMEM budget</aside-title><p>512 columns: S0 and S1 (each tile’s scores, 128 columns each) plus O0 and O1
+(the accumulators).</p></aside>
+<p>The next score matmul is chained, transitively, behind this block’s exp2, P
+store, and P·V. That’s why S always lands just-in-time. Dense mostly gets
+away with it — exp2 is long enough to cover the chain. But BLASST <em>deletes</em>
+exp2, and what remains on a skipped block is exactly what the chain gates:
+waiting for scores, then a vote about them. The skip removes the work that
+was hiding the latency and keeps the latency.</p>
+<p>The same chain explains the 0-skip tax’s stubbornness — the vote sits inside
+the one serial dependency with no slack — and predicts the fix. Nothing about
+the decision needs to change. The S buffer must be free the moment its scores
+are read out, so the next QKᵀ can start underneath everything else. P needs
+to go somewhere else. There is no spare TMEM. But there are the sibling’s
+columns.</p>
+<h2 id="cross-stage-p">Cross-stage P<a data-heading-anchor="" href="#cross-stage-p" aria-label="Link to this section" tabindex="-1"></a></h2>
+<p>Where can P go? P is bf16, so a 128-wide P row packs into 64 of an S region’s
+128 f32-sized columns — and after readout, an S region is dead data.
+Cross-stage P changes only where P is written: tile A’s P goes into tile B’s
+S region and vice versa (<code>S0[0:64) = P1</code>, <code>S1[0:64) = P0</code>, upper halves
+stale).</p>
+<aside><aside-title>Lineage</aside-title><p>The placement is a port from
+<a href="https://github.com/flashinfer-ai/flashinfer" target="_blank" rel="nofollow noreferrer noopener">FlashInfer’s</a> native SM100
+kernel onto MAX’s FA4 structure.</p></aside>
+<p><img alt="Cross-P TMEM layout: self-aliased default where P overwrites its own tile’s S region versus the cross-stage layout where each tile’s P lands in the sibling’s S columns" loading="lazy" decoding="async" width="740" height="350" src="/_astro/crossp-tmem-layout.B3TNvu3V_21JX8c.svg" srcset=""></p>
+<p>Now a tile’s score buffer is free the instant readout completes — before exp2
+even runs — so the next score matmul starts right away. The exp2/store/P·V
+tail runs <em>beside</em> the next QKᵀ instead of in front of it.
+Moving one address breaks an implicit safety net, so three things move with
+it:</p>
+<ul>
+<li><strong>The MMA issue order goes QK-first.</strong> The default order put each tile’s
+next QK behind its own P·V in program order — that <em>was</em> the
+write-after-read fence protecting P. Both score matmuls now issue first,
+each QK gated by a cheap “softmax finished reading S” mbarrier instead of a
+full P drain.</li>
+<li><strong>A JIT-P1 seed.</strong> One hazard survives: tile B’s P now lives in S0, and QK0
+is the <em>first</em> op of the next iteration — it would clobber P1 before its
+P·V read. The fix makes tile B’s store <em>late</em> rather than guarded:
+warpgroup B consumes one extra “window free” token before its main loop — a
+one-block head start, so its store lands after the next QK0’s scores are
+read out. Both pieces — order and seed — come from FlashInfer.</li>
+<li><strong>A tuned store schedule.</strong> P can only be stored once the sibling’s window
+is free (an <code>inplace</code> handshake), so each tile buffers some exp2 output in
+registers to cover the gap. An exhaustive md5-witnessed sweep: buffer
+<em>nothing</em> and the store stalls on the flag (+5.99%); buffer <em>everything</em>
+and exp2 stops overlapping the stores (up to +11.44%). Shipped: tile B
+fully fused — its window frees before its exp2 even starts, thanks to the
+half-period stagger — and tile A buffers a quarter.</li>
+</ul>
+<p>BLASST plugs in unchanged: the skip path consumes its handshake token per
+block even when storing nothing, keeping the pipelines in phase.</p>
+<p>I had built this exact mechanism three weeks earlier and measured a loss:
++1.44% on dense, the intended “S arrives early” gain ≈0. The post-mortem also
+found a real race in its cross-warpgroup handshake — isolated launches
+verified 12/12; back-to-back launches failed about 1 in 5. I archived the
+diff and wrote “falsified.” Then an unrelated MMA-layout rewrite landed on
+<code>main</code> and changed the kernel’s latency-hiding shape. Re-measured on top of
+it, the identical placement was a clear win; retuned (the sweep above), with
+depth-4 handshake pipes, it shipped. The lesson, verbatim from my notes:
+<em>“‘inherent’ verdicts are relative to a kernel shape — re-test falsified
+levers after major upstream rewrites.”</em></p>
+<aside><aside-title>The race, in detail</aside-title><p>The first handshake used depth-1 pipes and a peek-less blocking wait. Under
+heavy instrumentation (NCU replay, racecheck) the kernel wedged outright —
+which is how the race was found at all. The 25×/10× back-to-back launch
+soaks in the verification suite date from this; single-launch verification
+had let it through.</p></aside>
+<h2 id="evidence-part-2">Evidence, part 2<a data-heading-anchor="" href="#evidence-part-2" aria-label="Link to this section" tabindex="-1"></a></h2>
+<p>Cross-P alone, dense inputs, BLASST off:</p>
+<p><img alt="Measured clock64 gantt, dense with cross-P: the light-blue wait-for-scores segments have collapsed and softmax lanes run A1 into exp2 nearly back-to-back" loading="lazy" decoding="async" width="2400" height="960" src="/_astro/gantt_cmp_A15_crossp_dense.ZuPbF5ge_ONM4S.webp" srcset=""></p>
+<p>Same axes as the dense baseline: the light-blue waits have all but
+disappeared — the next block’s scores are computed underneath the current
+block’s softmax, exactly the slack the layout was supposed to buy.</p>
+<aside><aside-title>Reading tile A’s span</aside-title><p>Tile A’s orange span <em>measures</em> longer here because the instrumented exp2
+window now contains the buffered P-store drain — the gantts-for-structure
+rule again; the clock says −3.36%.</p></aside>
+<p><img alt="Zoomed dense cross-P gantt: per-block waits reduced to near zero, A1 starting almost immediately after the previous exp2 ends" loading="lazy" decoding="async" width="2400" height="960" src="/_astro/gantt_crossp_dense_zoom_A15.PZHJQMPk_r2Cnp.webp" srcset=""></p>
+<p>On the bench: 1.24201 → 1.20025 ms, −3.36% on dense — which is why cross-P
+ships default-on, BLASST or no. The NCU matched pair reads as a pure
+scheduling win — the same matmul work, packed tighter.</p>
+<aside><aside-title>The dense matched pair</aside-title><p>Tensor-pipe utilization 79.6% → 84.2%; instructions +4.13% while cycles fall
+4.80%; MMA instruction count bit-identical (4,194,304).</p></aside>
+<p>And both together — BLASST nb4 + cross-P:</p>
+<p><img alt="Measured clock64 gantt, BLASST nb4 with cross-P: waits are gone, skipped blocks run A1, DEC, skip back-to-back, red SKIP ticks pepper the MMA lane, and more KV blocks fit in the same time window" loading="lazy" decoding="async" width="2400" height="960" src="/_astro/gantt_cmp_A15_both_nb4.0fqNKg6t_Z1w0g1C.webp" srcset=""></p>
+<p>Against the BLASST-alone gantt: same DEC spans, same skip slivers, same red
+ticks — the vote is untouched — but the light blue is gone. Skipped blocks
+run A1 → DEC → skip back-to-back, and visibly more KV blocks fit in the same
+12,000-cycle window.</p>
+<p><img alt="Zoomed BLASST-plus-cross-P gantt: skipped blocks compressed to read, decide, skip with no leading wait segment" loading="lazy" decoding="async" width="2400" height="960" src="/_astro/gantt_both_nb4_zoom_A15.UTT9LrZQ_Z19ydtz.webp" srcset=""></p>
+<p>Why does cross-P help <em>more</em> under BLASST than on dense — −12% vs −3.4%? On
+dense, exp2 still dominates, so early scores mostly convert waiting into
+slack. With skipping, exp2 is deleted and score latency <em>is</em> the critical
+path — precisely what the early release shortens.</p>
+<aside><aside-title>NCU at 76% skip</aside-title><p>Tensor pipe 61.5% → 69.6%, long-scoreboard stalls −30%, mio-throttle −12%,
+registers flat at 128/thread, zero spill.</p></aside>
+<p>At 0% skip there is no exp2 to remove, so the released slack simply
+absorbs the vote chain: +14.8% becomes −0.7%. The tax is gone.</p>
+<h2 id="from-kernel-to-model">From kernel to model<a data-heading-anchor="" href="#from-kernel-to-model" aria-label="Link to this section" tabindex="-1"></a></h2>
+<p>Does any of this survive end to end? Attention is only part of prefill —
+TTFT gains are diluted by unchanged MLP, norm, and embedding work — and
+accuracy decides whether any of it ships. Setup: Llama-3.1-8B-Instruct,
+bf16, single B200.</p>
+<aside><aside-title>Eval protocol</aside-title><p>RULER: 13 tasks × {4K…64K}, 130 samples per task. TTFT: an isolated single
+request, median of 10, fresh server per point.</p></aside>
+<table>
+<thead>
+<tr>
+<th style="text-align: right">MAG</th>
+<th style="text-align: right">RULER avg</th>
+<th style="text-align: right">RULER 64K</th>
+<th style="text-align: right">TTFT 4K Δ</th>
+<th style="text-align: right">TTFT 64K Δ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right">dense</td>
+<td style="text-align: right">81.9</td>
+<td style="text-align: right">78.5</td>
+<td style="text-align: right">ref (44.3 ms)</td>
+<td style="text-align: right">ref (1194 ms)</td>
+</tr>
+<tr>
+<td style="text-align: right">14000</td>
+<td style="text-align: right">81.9</td>
+<td style="text-align: right">78.5</td>
+<td style="text-align: right">−0.5%</td>
+<td style="text-align: right">+3.8%</td>
+</tr>
+<tr>
+<td style="text-align: right">10000</td>
+<td style="text-align: right">81.7</td>
+<td style="text-align: right">77.4</td>
+<td style="text-align: right">+1.1%</td>
+<td style="text-align: right">−4.1%</td>
+</tr>
+<tr>
+<td style="text-align: right">7000</td>
+<td style="text-align: right">82.6</td>
+<td style="text-align: right">78.2</td>
+<td style="text-align: right">−2.7%</td>
+<td style="text-align: right">−8.6%</td>
+</tr>
+<tr>
+<td style="text-align: right">4500</td>
+<td style="text-align: right">82.2</td>
+<td style="text-align: right">77.7</td>
+<td style="text-align: right">+2.5%</td>
+<td style="text-align: right">−13.7%</td>
+</tr>
+<tr>
+<td style="text-align: right">2500</td>
+<td style="text-align: right">82.7</td>
+<td style="text-align: right">75.2</td>
+<td style="text-align: right">−3.8%</td>
+<td style="text-align: right">−20.0%</td>
+</tr>
+<tr>
+<td style="text-align: right">1500</td>
+<td style="text-align: right">79.6</td>
+<td style="text-align: right">69.6</td>
+<td style="text-align: right">−4.3%</td>
+<td style="text-align: right">−20.9%</td>
+</tr>
+<tr>
+<td style="text-align: right">1000</td>
+<td style="text-align: right">71.8</td>
+<td style="text-align: right">58.2</td>
+<td style="text-align: right">−6.8%</td>
+<td style="text-align: right">−21.9%</td>
+</tr>
+</tbody>
+</table>
+<p><img alt="RULER average accuracy vs 64K TTFT speedup, one point per threshold: accuracy sits on or above the dense line from MAG 14000 through 2500 while speedup grows to 20%, then falls off a cliff at MAG 1500 and 1000" loading="lazy" decoding="async" width="1152" height="768" src="/_astro/blasst_accuracy_vs_speedup.BKe0QC7x_1XicW6.webp" srcset=""></p>
+<p>Accuracy holds from the strictest threshold down to MAG 2500, which posts the
+best average — above dense — while cutting 64K TTFT by a fifth. Below MAG
+1500, accuracy falls off a cliff, long context first.</p>
+<p>It’s a long-context lever: at 4K the deltas sit within a few percent either
+way — nothing worth skipping — and the win grows with context. Too
+conservative is also wrong: MAG 14000 is <em>slower</em> than dense at 64K, because
+nothing clears the threshold and the vote runs with nothing to remove.</p>
+<p><img alt="RULER accuracy vs skip threshold by context length: 4K and 8K flat at all thresholds, 16K stable to MAG 2500, 32K and 64K holding near dense until MAG 1500–1000 where they collapse" loading="lazy" decoding="async" width="975" height="675" src="/_astro/ruler_accuracy_vs_lambda.BPntUw_4_Z2qOcdP.webp" srcset=""></p>
+<p><img alt="Clean prefill TTFT reduction vs skip threshold at 64K context, growing smoothly from about −9% to −16.5% as the threshold loosens" loading="lazy" decoding="async" width="975" height="675" src="/_astro/ruler_ttft_vs_lambda_64k.5_JMxdqW_23Rvp7.webp" srcset=""></p>
+<p>The PR recommends MAG 2500 (best average) or MAG 4500 (64K-lossless, table
+above).</p>
+<aside><aside-title>Absolute RULER</aside-title><p>Our <em>absolute</em> RULER (~82 avg) sits below the paper’s ~93 for this model — a
+serving-harness fidelity gap, same harness for dense and every λ, so the
+relative comparison stands. The absolute gap is tracked separately.</p></aside>
+<h2 id="trusting-the-numbers">Trusting the numbers<a data-heading-anchor="" href="#trusting-the-numbers" aria-label="Link to this section" tabindex="-1"></a></h2>
+<p>Sparse-attention kernels fail quietly — plausible-but-wrong outputs, races
+that only show under load — and this project ate one such race early. Every
+number rides a stack of gates: bit-exact reference agreement, launch-pressure
+soaks, sanitizer-clean runs, md5-witnessed ON-vs-OFF pairs. Disabled, BLASST
+cannot perturb the shipping kernel: the OFF build is byte-identical (md5).</p>
+<aside><aside-title>The gates</aside-title><p>Bit-exact verify at awkward shapes (T = 5/8/63/127; num_keys
+512/8064/16256); skip counts match the dial exactly, with a differential
+golden confirming cross-P changes no decision; compute-sanitizer synccheck
+and racecheck clean; NCU always on matched clock-locked pairs.</p></aside>
+<h2 id="where-i-landed">Where I landed<a data-heading-anchor="" href="#where-i-landed" aria-label="Link to this section" tabindex="-1"></a></h2>
+<p>BLASST ships opt-in; cross-stage P ships default-on. Together on the FA4
+SM100 bf16 prefill kernel: −41.9% attention-kernel time at 95% skip, −0.7% at
+0% skip, and −20% TTFT at 64K with RULER accuracy above the dense baseline.</p>
+<aside><aside-title>The raw evidence</aside-title><p>Gantt CSVs, capture scripts, NCU tables, and provenance are in a
+<a href="https://gist.github.com/yashagar-cmu/252090c98f59a3057f23ca9968331135" target="_blank" rel="nofollow noreferrer noopener">public gist</a>.</p></aside>
+<p>Two lessons cost the most. Count cycles, not instructions: deleting 3.10M
+instructions moved cycles 0%. The tax was placement — a short chain in the
+wrong place beats a long chain in the right one. And falsified is a property
+of the baseline: the same cross-P mechanism measured a loss in July and a win
+in August, separated by an upstream rewrite. Re-test your graveyard. The
+third generalizes: a skip optimization is a latency-hiding audit — whether
+removed work becomes wall-clock depends on what it was hiding. The gantt
+showed what no counter did.</p>
+<p>One item stays open: the absolute-RULER gap against the paper’s scores —
+presumably serving-harness fidelity; the relative comparisons stand either
+way.</p>
+<p>Thanks to Modular for giving “the skip works but the speedup is missing” the
+weeks it needed, and to my mentor Chris Elrod, who runs GPUs in his head.</p>
+<p>If your attention kernel is about to grow a skip path, move the decision off
+the critical path first, and budget as much time for the schedule as for the
+math. And if you’ve measured an in-path vote that came out free at 0%
+sparsity, I’d like to see it.</p>
+ </prose-content> </article></main> <page-footer data-astro-cid-ju4pidww="true"><footer data-astro-cid-jo6i4kqk> <p data-astro-cid-jo6i4kqk>
+&copy; 2026 Yash Agarwal </p> <footer-socials data-astro-cid-jo6i4kqk="true"> <ul data-astro-cid-o2gh7vpa> <li data-astro-cid-o2gh7vpa> <a href="https://github.com/yashagar-cmu" data-icon-button target="_blank" rel="noopener noreferrer" aria-label="GitHub" title="GitHub" data-astro-cid-o2gh7vpa> <svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" data-astro-cid-o2gh7vpa="true"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12c0 5.303 3.438 9.8 8.205 11.385c.6.113.82-.258.82-.577c0-.285-.01-1.04-.015-2.04c-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729c1.205.084 1.838 1.236 1.838 1.236c1.07 1.835 2.809 1.305 3.495.998c.108-.776.417-1.305.76-1.605c-2.665-.3-5.466-1.332-5.466-5.93c0-1.31.465-2.38 1.235-3.22c-.135-.303-.54-1.523.105-3.176c0 0 1.005-.322 3.3 1.23c.96-.267 1.98-.399 3-.405c1.02.006 2.04.138 3 .405c2.28-1.552 3.285-1.23 3.285-1.23c.645 1.653.24 2.873.12 3.176c.765.84 1.23 1.91 1.23 3.22c0 4.61-2.805 5.625-5.475 5.92c.42.36.81 1.096.81 2.22c0 1.606-.015 2.896-.015 3.286c0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" /></svg> </a> </li><li data-astro-cid-o2gh7vpa> <a href="https://linkedin.com/in/yashagarwalcs" data-icon-button target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn" data-astro-cid-o2gh7vpa> <svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" data-astro-cid-o2gh7vpa="true"><path fill="currentColor" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037c-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85c3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065a2.064 2.064 0 1 1 2.063 2.065m1.782 13.019H3.555V9h3.564zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0" /></svg> </a> </li><li data-astro-cid-o2gh7vpa> <a href="mailto:yashagar@cs.cmu.edu" data-icon-button target="_blank" rel="noopener noreferrer" aria-label="Email" title="Email" data-astro-cid-o2gh7vpa> <svg width="1em" height="1em" viewBox="0 0 24 24" aria-hidden="true" data-astro-cid-o2gh7vpa="true"><path fill="currentColor" fill-rule="evenodd" d="M3.172 5.172C2 6.343 2 8.229 2 12s0 5.657 1.172 6.828S6.229 20 10 20h4c3.771 0 5.657 0 6.828-1.172S22 15.771 22 12s0-5.657-1.172-6.828S17.771 4 14 4h-4C6.229 4 4.343 4 3.172 5.172M18.576 7.52a.75.75 0 0 1-.096 1.056l-2.196 1.83c-.887.74-1.605 1.338-2.24 1.746c-.66.425-1.303.693-2.044.693s-1.384-.269-2.045-.693c-.634-.408-1.352-1.007-2.239-1.745L5.52 8.577a.75.75 0 0 1 .96-1.153l2.16 1.799c.933.777 1.58 1.315 2.128 1.667c.529.34.888.455 1.233.455s.704-.114 1.233-.455c.547-.352 1.195-.89 2.128-1.667l2.159-1.8a.75.75 0 0 1 1.056.097" clip-rule="evenodd" /></svg> </a> </li> </ul> </footer-socials> </footer></page-footer> </page-content> </page-grid> </body> </html>
