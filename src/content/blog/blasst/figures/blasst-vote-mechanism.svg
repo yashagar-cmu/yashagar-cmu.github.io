@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -52 830 340" font-family="Segoe Print, Bradley Hand, Comic Sans MS, cursive">
+<rect x="-8" y="-52" width="830" height="340" fill="#ffffff"/>
+<defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="context-stroke" stroke-width="1.6"/></marker></defs>
+<text x="0" y="-26.4" font-size="16" fill="#1e1e1e" text-anchor="start">BLASST skip decision as landed (#91199): two maxima + 2-level unanimous vote</text>
+<rect x="0" y="10" width="250" height="74" rx="6" fill="#a5d8ff" stroke="#1971c2" stroke-width="2"/>
+<text x="125" y="35.4" font-size="11" fill="#1971c2" text-anchor="middle">softmax warp (per lane)</text>
+<text x="125" y="51.6" font-size="9" fill="#1e1e1e" text-anchor="middle">m_true = max(m_true, tile_max)</text>
+<text x="125" y="62.9" font-size="9" fill="#1e1e1e" text-anchor="middle">diff = (tile_max - m_true) x scale</text>
+<text x="125" y="74.2" font-size="9" fill="#1e1e1e" text-anchor="middle">skip? diff &lt; -MAG/1000 x log2(e)</text>
+<rect x="0" y="108" width="250" height="44" rx="6" fill="#e9ecef" stroke="#868e96" stroke-width="2"/>
+<text x="125.0" y="126.4" font-size="9" fill="#1e1e1e" text-anchor="middle">why m_true: lazy row_max lags up to 2^8</text>
+<text x="125.0" y="137.7" font-size="9" fill="#1e1e1e" text-anchor="middle">-&gt; would shrink lambda by up to 256x</text>
+<line x1="250" y1="47" x2="320" y2="47" stroke="#1e1e1e" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="320" y="24" width="170" height="46" rx="6" fill="#ffec99" stroke="#f08c00" stroke-width="2"/>
+<text x="405.0" y="43.0" font-size="10" fill="#1e1e1e" text-anchor="middle">warp ballot</text>
+<text x="405.0" y="55.5" font-size="10" fill="#1e1e1e" text-anchor="middle">VOTE.ALL == 0xFFFFFFFF</text>
+<line x1="490" y1="47" x2="560" y2="47" stroke="#1e1e1e" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="560" y="10" width="210" height="74" rx="6" fill="#eebefa" stroke="#9c36b5" stroke-width="2"/>
+<text x="665" y="33.6" font-size="9" fill="#9c36b5" text-anchor="middle">smem vote slots [2 WG x 2 phase x 4 warps]</text>
+<text x="665" y="51.6" font-size="9" fill="#1e1e1e" text-anchor="middle">lane 0 writes warp bit (STS.U8)</text>
+<text x="665" y="62.9" font-size="9" fill="#1e1e1e" text-anchor="middle">double-buffered by S-pipeline phase</text>
+<line x1="665" y1="84" x2="665" y2="120" stroke="#1e1e1e" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="560" y="120" width="210" height="40" rx="6" fill="#e9ecef" stroke="#868e96" stroke-width="2"/>
+<text x="665.0" y="136.4" font-size="9" fill="#1e1e1e" text-anchor="middle">named_barrier(wg) -&gt; read 4 bytes</text>
+<text x="665.0" y="147.7" font-size="9" fill="#1e1e1e" text-anchor="middle">as UInt32 == 0x01010101 (AND)</text>
+<line x1="560" y1="140" x2="380" y2="140" stroke="#1e1e1e" stroke-width="1.8" marker-end="url(#ah)"/>
+<rect x="150" y="176" width="280" height="56" rx="6" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2"/>
+<text x="290" y="199.3" font-size="11" fill="#2f9e44" text-anchor="middle">softmax on skip: store_exp_skip()</text>
+<text x="290" y="215.7" font-size="9" fill="#1e1e1e" text-anchor="middle">no exp2 / no rowsum / no P-store</text>
+<text x="290" y="226.9" font-size="9" fill="#1e1e1e" text-anchor="middle">correction_smem = 1.0 (identity); commits preserved</text>
+<rect x="470" y="176" width="280" height="56" rx="6" fill="#ffd8a8" stroke="#e8590c" stroke-width="2"/>
+<text x="610" y="199.3" font-size="11" fill="#e8590c" text-anchor="middle">MMA warp on skip</text>
+<text x="610" y="215.7" font-size="9" fill="#1e1e1e" text-anchor="middle">elide P.V UMMA1 only —</text>
+<text x="610" y="226.9" font-size="9" fill="#1e1e1e" text-anchor="middle">QK^T UMMA0 + V loads ALWAYS run</text>
+<line x1="320" y1="160" x2="290" y2="176" stroke="#1e1e1e" stroke-width="1.8" marker-end="url(#ah)"/>
+<line x1="600" y1="160" x2="610" y2="176" stroke="#1e1e1e" stroke-width="1.8" marker-end="url(#ah)"/>
+<text x="0" y="267.4" font-size="11" fill="#495057" text-anchor="start">unanimity: one dissenting row vetoes the block (P.V is monolithic over the warpgroup) — this is the &#x27;blocked&#x27; in BLASST</text>
+</svg>

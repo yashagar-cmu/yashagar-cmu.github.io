@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -18 970 484" font-family="Segoe Print, Bradley Hand, Comic Sans MS, cursive">
+<rect x="-4" y="-18" width="970" height="484" fill="#ffffff"/>
+<defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 1 L 8 5 L 0 9" fill="none" stroke="context-stroke" stroke-width="1.6"/></marker></defs>
+<text x="20" y="21.0" font-size="15" fill="#1e1e1e" text-anchor="start">logits block per step: [B*(K+1), 262144] = 256 x 262,144 - ~134 MB bf16</text>
+<rect x="20" y="40" width="540" height="96" rx="8" fill="#f1f3f5" stroke="#1e1e1e" stroke-width="2"/>
+<text x="290.0" y="87.0" font-size="13" fill="#1e1e1e" text-anchor="middle">256 rows</text>
+<text x="290.0" y="154.0" font-size="12" fill="#868e96" text-anchor="middle">262,144 cols (vocab)</text>
+<rect x="20" y="170" width="540" height="26" rx="8" fill="#d0ebff" stroke="#1971c2" stroke-width="2"/>
+<text x="290.0" y="184.0" font-size="11" fill="#1971c2" text-anchor="middle">one row</text>
+<rect x="20" y="210" width="135" height="20" rx="8" fill="#ffc9c9" stroke="#e03131" stroke-width="2"/>
+<text x="165" y="223.0" font-size="12" fill="#e03131" text-anchor="start">256 threads - occ 20% - stalled on DRAM latency</text>
+<rect x="20" y="244" width="540" height="20" rx="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2"/>
+<text x="570" y="257.0" font-size="12" fill="#2f9e44" text-anchor="start">1024 threads - occ 80%</text>
+<text x="640" y="54.0" font-size="14" fill="#1e1e1e" text-anchor="start">ncu receipts:</text>
+<text x="640" y="83.0" font-size="13" fill="#2f9e44" text-anchor="start">argmax 313 -&gt; 104 us  (3.02x)</text>
+<text x="640" y="99.2" font-size="13" fill="#2f9e44" text-anchor="start">softmax 342 -&gt; 210 us  (1.63x, at roofline)</text>
+<text x="640" y="115.5" font-size="13" fill="#2f9e44" text-anchor="start">long_scoreboard 33 -&gt; hidden</text>
+<text x="640" y="131.8" font-size="13" fill="#2f9e44" text-anchor="start">e2e -2.26% @ c32 - md5 equal</text>
+<text x="20" y="306.0" font-size="14" fill="#1e1e1e" text-anchor="start">stochastic sampler chain (1.48 ms/step @ c64):</text>
+<rect x="20" y="324" width="118" height="50" rx="8" fill="#f1f3f5" stroke="#1e1e1e" stroke-width="2"/>
+<text x="79.0" y="346.0" font-size="12" fill="#1e1e1e" text-anchor="middle">softmax</text>
+<text x="79.0" y="361.0" font-size="12" fill="#1e1e1e" text-anchor="middle">0.80</text>
+<line x1="138" y1="349" x2="163" y2="349" stroke="#1e1e1e" stroke-width="2" marker-end="url(#ah)"/>
+<rect x="163" y="324" width="118" height="50" rx="8" fill="#f1f3f5" stroke="#1e1e1e" stroke-width="2"/>
+<text x="222.0" y="346.0" font-size="12" fill="#1e1e1e" text-anchor="middle">divide</text>
+<text x="222.0" y="361.0" font-size="12" fill="#1e1e1e" text-anchor="middle">0.17</text>
+<line x1="281" y1="349" x2="306" y2="349" stroke="#1e1e1e" stroke-width="2" marker-end="url(#ah)"/>
+<rect x="306" y="324" width="118" height="50" rx="8" fill="#f1f3f5" stroke="#1e1e1e" stroke-width="2"/>
+<text x="365.0" y="346.0" font-size="12" fill="#1e1e1e" text-anchor="middle">argmax</text>
+<text x="365.0" y="361.0" font-size="12" fill="#1e1e1e" text-anchor="middle">0.42</text>
+<line x1="424" y1="349" x2="449" y2="349" stroke="#1e1e1e" stroke-width="2" marker-end="url(#ah)"/>
+<rect x="449" y="324" width="118" height="50" rx="8" fill="#f1f3f5" stroke="#1e1e1e" stroke-width="2"/>
+<text x="508.0" y="346.0" font-size="12" fill="#1e1e1e" text-anchor="middle">gumbel/top-k</text>
+<text x="508.0" y="361.0" font-size="12" fill="#1e1e1e" text-anchor="middle">0.09</text>
+<line x1="79" y1="374" x2="79" y2="402" stroke="#2f9e44" stroke-width="2" marker-end="url(#ah)"/>
+<rect x="20" y="402" width="552" height="40" rx="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2"/>
+<text x="296.0" y="426.9" font-size="13" fill="#2f9e44" text-anchor="middle">all-greedy? -&gt; captured compare-only lane   (-5.8% @ c64)</text>
+</svg>
