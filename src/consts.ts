@@ -21,7 +21,7 @@ export const ANALYTICS: {
   umamiWebsiteId: string
   umamiScriptUrl: string
 } = {
-  umamiWebsiteId: "",
+  umamiWebsiteId: "1ff6a735-d7b2-40f6-98fc-2c6240d7e5a2",
   umamiScriptUrl: "https://cloud.umami.is/script.js",
 }
 
