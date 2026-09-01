@@ -18,7 +18,11 @@ const pdfUrl = cacheKey ? `/static/resume.pdf?v=${cacheKey}` : "/static/resume.p
   <MetaPage slot="head" title="CV" />
 
   <cv-actions>
-    <a href={pdfUrl} download="Yash_Agarwal_CV.pdf">
+    <a
+      href={pdfUrl}
+      download="Yash_Agarwal_CV.pdf"
+      data-umami-event="CV download"
+    >
       <DownloadIcon aria-hidden="true" />
       Download PDF
     </a>

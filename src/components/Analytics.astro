@@ -1,0 +1,18 @@
+---
+import { ANALYTICS } from "@/consts"
+
+/* Only loads in a production build, so `npm run dev` never pollutes the
+   stats, and only when a website ID has been configured. */
+const enabled = import.meta.env.PROD && ANALYTICS.umamiWebsiteId !== ""
+---
+
+{
+  enabled && (
+    <script
+      is:inline
+      defer
+      src={ANALYTICS.umamiScriptUrl}
+      data-website-id={ANALYTICS.umamiWebsiteId}
+    />
+  )
+}

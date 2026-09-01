@@ -1,6 +1,7 @@
 ---
 import sansWoff2 from "@/assets/fonts/IBMPlexSans-VariableFont_wdth,wght.woff2?url"
 import sansItalicWoff2 from "@/assets/fonts/IBMPlexSans-Italic-VariableFont_wdth,wght.woff2?url"
+import Analytics from "@/components/Analytics.astro"
 import { SITE } from "@/consts"
 ---
 
@@ -61,6 +62,8 @@ import { SITE } from "@/consts"
     if (theme === "light" || theme === "dark")
       document.documentElement.dataset.theme = theme
   </script>
+
+  <Analytics />
 
   <slot />
 </head>

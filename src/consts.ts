@@ -13,6 +13,18 @@ export const SITE = {
   defaultPostImage: "/static/1200x630.png",
 } as const
 
+/* Umami analytics. The website ID is a public identifier (it ships in the
+   page source), so it lives here rather than in a secret. Leave the id empty
+   to disable tracking entirely. Both values come from the "Tracking code"
+   panel in the Umami dashboard. */
+export const ANALYTICS: {
+  umamiWebsiteId: string
+  umamiScriptUrl: string
+} = {
+  umamiWebsiteId: "",
+  umamiScriptUrl: "https://cloud.umami.is/script.js",
+}
+
 export const NAVIGATION = [
   { href: "/blog", label: "Blog" },
   { href: "/cv", label: "CV" },
