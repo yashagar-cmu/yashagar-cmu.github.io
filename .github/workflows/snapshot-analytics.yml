@@ -1,0 +1,71 @@
+name: Snapshot analytics
+
+# Archives each finished month of Umami analytics into analytics/YYYY-MM.json.
+#
+# Umami Cloud's Hobby plan keeps only 6 months of data; these snapshots are the
+# permanent record. See bin/snapshot_analytics.py.
+#
+# Needs one repository secret: UMAMI_API_KEY (Umami -> Settings -> API keys).
+# Runs on the 2nd of the month so the previous month is comfortably settled.
+
+on:
+  schedule:
+    - cron: "0 6 2 * *" # 2nd of each month, 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "Month to archive as YYYY-MM (blank = last complete month)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapshot-analytics
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    env:
+      UMAMI_WEBSITE_ID: 1ff6a735-d7b2-40f6-98fc-2c6240d7e5a2
+      SNAPSHOT_MONTH: ${{ inputs.month }}
+      ANALYTICS_DIR: analytics
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Fetch the month 📊
+        id: fetch
+        env:
+          UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
+        run: python3 bin/snapshot_analytics.py
+
+      - name: Commit 📝
+        if: steps.fetch.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$ANALYTICS_DIR"
+          if git diff --cached --quiet; then
+            echo "Nothing staged; skipping commit."
+            exit 0
+          fi
+          git commit -m "chore: archive $(ls -1 "$ANALYTICS_DIR" | tail -1 | sed 's/\.json$//') analytics"
+
+          # Other workflows also push to main, so the ref can move between
+          # checkout and push. Rebase and retry rather than losing the snapshot.
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt/5); rebasing onto origin/main."
+            if ! git pull --rebase origin main; then
+              git rebase --abort || true
+              echo "::error::Rebase onto origin/main failed."
+              exit 1
+            fi
+          done
+          echo "::error::Could not push after 5 attempts."
+          exit 1
