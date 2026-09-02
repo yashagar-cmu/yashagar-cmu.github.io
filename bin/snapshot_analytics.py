@@ -108,7 +108,15 @@ def main():
     api_key = os.environ.get("UMAMI_API_KEY", "").strip()
     website_id = os.environ.get("UMAMI_WEBSITE_ID", "").strip()
     if not api_key:
-        fail("UMAMI_API_KEY is empty. Add it as a repository secret.")
+        # Never configured is not a failure. A red X every month for a job
+        # that was simply not switched on is noise, so warn and stop. A key
+        # that exists but is rejected still fails loudly - see get().
+        print(
+            "::warning::UMAMI_API_KEY is not set, so there is nothing to "
+            "archive yet. Add it as a repository secret to switch this on."
+        )
+        set_output("changed", "false")
+        return
     if not website_id:
         fail("UMAMI_WEBSITE_ID is empty.")
 
