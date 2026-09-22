@@ -1,180 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Paste any netstat -rn output (macOS, Linux, Windows) and read the routing table as a graph: interfaces, connected prefixes, next hops, neighbors, with decoded flags and a longest-prefix-match packet trace.">
-<link rel="icon" href="/favicon.svg">
-<link rel="canonical" href="https://yash-agarwal.org/tools/routes/">
-<title>Route Graph</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
-<style>
-  :root {
-    color-scheme: light;
-    --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eaeef2; --line: #d7dde3; --text: #14181c; --text-2: #55606b; --muted: #8a949e;
-    --host: #d99400; --iface: #2a78d6; --net: #1baf7a; --neighbor: #eb6834; --self: #7d8791; --remote: #4a3aa7;
-    --def: #e34948; --hl: #14181c; --match: #2a78d6; --edge: #b4bcc4; --warn: #b7791f; --tip-bg: #ffffff; --shadow: 0 8px 28px rgba(20,24,28,.16);
-    --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-    --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      color-scheme: dark;
-      --bg: #15181b; --surface: #1e2226; --surface-2: #262b30; --line: #343b42; --text: #f2f4f6; --text-2: #b6bec6; --muted: #7f8992;
-      --host: #c98500; --iface: #3987e5; --net: #199e70; --neighbor: #d95926; --self: #96a0aa; --remote: #9085e9;
-      --def: #e66767; --hl: #f2f4f6; --match: #3987e5; --edge: #4c545c; --warn: #e0a83a; --tip-bg: #262b30; --shadow: 0 8px 28px rgba(0,0,0,.55);
-    }
-  }
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --bg: #15181b; --surface: #1e2226; --surface-2: #262b30; --line: #343b42; --text: #f2f4f6; --text-2: #b6bec6; --muted: #7f8992;
-    --host: #c98500; --iface: #3987e5; --net: #199e70; --neighbor: #d95926; --self: #96a0aa; --remote: #9085e9;
-    --def: #e66767; --hl: #f2f4f6; --match: #3987e5; --edge: #4c545c; --warn: #e0a83a; --tip-bg: #262b30; --shadow: 0 8px 28px rgba(0,0,0,.55);
-  }
-  * { box-sizing: border-box; }
-  [hidden] { display: none !important; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); padding-block: 0 56px; padding-inline: 16px; }
-  .wrap { max-width: 1400px; margin: 0 auto; }
-  code, .mono, textarea, table, #addr, #hostname { font-family: var(--mono); }
-  code { font-size: .93em; }
-  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; padding: 22px 0 6px; }
-  h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
-  h1 span { font-family: var(--mono); font-weight: 500; }
-  h2 { font-size: 15px; font-weight: 600; margin: 22px 0 8px; color: var(--text-2); letter-spacing: .02em; }
-  h4 { font-size: 13px; margin: 14px 0 4px; color: var(--text-2); }
-  .lede { margin: 0; color: var(--text-2); }
-  .home { color: var(--text-2); text-decoration: none; font-size: 13px; border-bottom: 1px dotted var(--line); }
-  .home:hover { color: var(--text); }
-  #theme { margin-left: auto; }
-  button, input[type=text], textarea { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; }
-  button { cursor: pointer; }
-  button:hover { border-color: var(--text-2); }
-  button.primary { background: var(--match); border-color: var(--match); color: #fff; font-weight: 500; }
-  button.primary:hover { filter: brightness(1.08); }
-  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--match); outline-offset: 1px; }
-  .chip { padding: 3px 10px; border-radius: 999px; font-size: 12.5px; background: var(--surface-2); border-color: transparent; }
-  .chip:hover { border-color: var(--text-2); }
-  .tag { display: inline-block; padding: 0 6px; border-radius: 4px; background: var(--surface-2); color: var(--text-2); font: 500 11px var(--sans); vertical-align: 1px; }
-
-  /* input panel */
-  .input { margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-  .input summary { padding: 10px 14px; cursor: pointer; font-weight: 600; color: var(--text-2); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
-  .input summary .hint { font-weight: 400; margin-left: auto; font-size: 12.5px; }
-  .input .body { padding: 0 14px 14px; display: grid; gap: 10px; }
-  .row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
-  .row label, .row .lbl { color: var(--text-2); font-size: 12.5px; }
-  textarea { width: 100%; min-height: 200px; resize: vertical; font-size: 12.5px; line-height: 1.4; white-space: pre; tab-size: 4; }
-  textarea#ifcfg, textarea#before { min-height: 90px; }
-  #hostname { width: 14ch; }
-  .err { color: var(--def); font-size: 13px; }
-  details.opt { margin: 0; }
-  details.opt summary { padding: 0; font-weight: 500; font-size: 12.5px; }
-  details.opt textarea { margin-top: 8px; }
-
-  /* controls */
-  .controls { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 0; border-bottom: 1px solid var(--line); margin-top: 14px; }
-  .controls label { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
-  .controls .sep { width: 1px; height: 22px; background: var(--line); }
-  #lookup { display: inline-flex; gap: 6px; flex: 1 1 280px; min-width: 240px; }
-  #lookup input { flex: 1; min-width: 0; }
-  .explain { margin: 12px 0 0; padding: 10px 14px; border: 1px solid var(--match); border-left-width: 5px; border-radius: 6px; background: var(--surface); white-space: pre-wrap; font-family: var(--mono); font-size: 12.5px; }
-  .explain .close { float: right; margin-left: 12px; }
-  #walk { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
-  .steps p { margin: 6px 0; max-width: 90ch; }
-  .frame { display: grid; gap: 4px; margin: 10px 0; max-width: 720px; font-family: var(--mono); font-size: 12px; }
-  .hdr { display: grid; grid-template-columns: 82px repeat(3, 1fr); gap: 4px; }
-  .hdr span { padding: 6px 8px; border-radius: 5px; background: color-mix(in srgb, var(--c) 14%, transparent); border: 1.5px solid var(--c); overflow-wrap: anywhere; }
-  .hdr span.lbl { background: var(--c); color: #fff; font-weight: 600; display: flex; align-items: center; }
-  .hdr small { display: block; font: 500 10px var(--sans); color: var(--text-2); letter-spacing: .04em; text-transform: uppercase; }
-  .hdr.eth { --c: var(--neighbor); } .hdr.ip { --c: var(--remote); } .hdr.pl { --c: var(--muted); grid-template-columns: 82px 1fr; }
-  .intervals { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
-  .intervals .cap { color: var(--text-2); margin: 4px 0 10px; max-width: 90ch; }
-  .intervals .row { display: grid; grid-template-columns: minmax(120px, 26ch) 1fr 12ch; gap: 10px; align-items: center; margin: 5px 0; flex-wrap: nowrap; }
-  .intervals .lbl { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
-  .intervals .w { font-size: 12px; color: var(--text-2); }
-  .intervals .bar { position: relative; height: 16px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); }
-  .intervals .bar i { position: absolute; top: 0; bottom: 0; }
-  .intervals .child { background: color-mix(in srgb, var(--match) 45%, transparent); }
-  .intervals .pt { width: 10px; height: 10px; top: 2px; margin-left: -5px; border-radius: 50%; background: var(--def); box-shadow: 0 0 0 2px var(--surface); }
-  .intervals .row.win .bar { border-color: var(--match); box-shadow: 0 0 0 1px var(--match); }
-  .bits { font-family: var(--mono); font-size: 11.5px; letter-spacing: .02em; overflow-wrap: anywhere; color: var(--text-2); }
-  .bits b { color: var(--match); }
-  .intervals .bits span { font-family: var(--sans); }
-  #graph { overflow: auto; max-height: 82vh; margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-  #graph svg { display: block; }
-  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; color: var(--text-2); font-size: 12.5px; }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
-  .legend i.line { width: 22px; height: 0; border: 0; border-top: 2.5px solid var(--c); border-radius: 0; }
-  .legend i.dash { border-top-style: dashed; }
-  #obs { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; max-width: 100ch; }
-  #obs li { padding: 7px 12px; border-left: 4px solid var(--net); border-radius: 4px; background: var(--surface); cursor: default; }
-  #obs li.warn { border-left-color: var(--warn); }
-  #obs li:hover { background: var(--surface-2); }
-  #changes-body ul { margin: 0 0 6px; padding-left: 18px; max-width: 100ch; }
-  table.mini { width: auto; margin-top: 4px; }
-  table.mini td { padding-right: 18px; }
-  table.mini.added td:first-child { color: var(--net); } table.mini.removed td:first-child { color: var(--def); text-decoration: line-through; }
-  details.sec { margin-top: 18px; }
-  details.sec summary { cursor: pointer; font-weight: 600; color: var(--text-2); }
-  .how { color: var(--text-2); max-width: 82ch; }
-  .how p { margin: 8px 0; }
-  .how b { color: var(--text); font-weight: 600; }
-  .how table { width: auto; margin-top: 8px; }
-  .how td, .how th { white-space: normal; font-family: var(--sans); font-size: 13px; }
-  .how td code { white-space: nowrap; }
-  dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 0; font-size: 13px; }
-  dt { font-family: var(--mono); color: var(--text); }
-  dd { margin: 0; color: var(--text-2); }
-  #routes-details { overflow-x: auto; }
-  table { border-collapse: collapse; margin-top: 10px; font-size: 12.5px; width: 100%; font-variant-numeric: tabular-nums; }
-  th, td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line); vertical-align: top; white-space: nowrap; }
-  th { color: var(--text-2); font-weight: 600; font-family: var(--sans); }
-  td.meaning { white-space: normal; color: var(--text-2); font-family: var(--sans); min-width: 20ch; }
-  tr[data-node] { cursor: pointer; }
-  tr.hidden-route { color: var(--muted); }
-  tr.hl td { background: color-mix(in srgb, var(--hl) 8%, transparent); }
-  tr.match td { background: color-mix(in srgb, var(--match) 16%, transparent); }
-  .tip { position: fixed; z-index: 10; max-width: min(600px, 92vw); padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--tip-bg); box-shadow: var(--shadow); font-size: 12.5px; pointer-events: none; }
-  .tip .t { font-weight: 600; font-family: var(--mono); }
-  .tip .n { color: var(--text-2); margin: 2px 0 6px; }
-  .tip pre { margin: 6px 0 0; font-size: 11.5px; white-space: pre-wrap; color: var(--text); font-family: var(--mono); }
-  .tip .f { color: var(--text-2); }
-  footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; max-width: 100ch; }
-
-  /* svg */
-  svg text { font: 12px var(--mono); fill: var(--text); pointer-events: none; }
-  svg text.sub { font-size: 10.5px; fill: var(--text-2); }
-  svg text.col { font: 600 11px var(--sans); fill: var(--text-2); letter-spacing: .06em; }
-  svg text.badge { font: 600 9px var(--sans); fill: var(--net); letter-spacing: .08em; }
-  svg .edge { fill: none; stroke: var(--edge); stroke-width: 1.4; transition: stroke .12s, opacity .12s; }
-  svg .edge.default { stroke: var(--def); stroke-width: 2.6; }
-  svg .edge.dashed { stroke-dasharray: 4 3; }
-  svg .edge.hl { stroke: var(--hl); stroke-width: 2.6; }
-  svg .edge.match { stroke: var(--match); stroke-width: 3.4; }
-  svg g.node { cursor: pointer; }
-  svg g.node rect { rx: 7; stroke-width: 1.5; fill: var(--c); fill-opacity: .13; stroke: var(--c); transition: stroke-width .12s; }
-  svg g.node.host { --c: var(--host); } svg g.node.iface { --c: var(--iface); } svg g.node.net { --c: var(--net); }
-  svg g.node.neighbor { --c: var(--neighbor); } svg g.node.self { --c: var(--self); } svg g.node.remote, svg g.node.default { --c: var(--remote); }
-  svg g.node.default rect { stroke-width: 2.4; fill-opacity: .22; }
-  svg g.node.dim rect { stroke-dasharray: 4 3; }
-  svg g.node.dim text { fill: var(--text-2); }
-  svg g.node.hl rect { stroke: var(--hl); stroke-width: 2.6; }
-  svg g.node.match rect { stroke: var(--match); stroke-width: 3.4; fill-opacity: .28; }
-  svg.faded g.node:not(.hl):not(.match) { opacity: .35; }
-  svg.faded .edge:not(.hl):not(.match) { opacity: .3; }
-  svg .lane { fill: var(--text); opacity: .03; }
-  @media (prefers-reduced-motion: reduce) { svg .edge, svg g.node rect { transition: none; } }
-  @media (max-width: 700px) { h1 { font-size: 18px; } .explain { font-size: 11px; } .input summary .hint { margin-left: 0; } .hdr { grid-template-columns: 1fr 1fr; } .hdr span.lbl { grid-column: 1 / -1; } .intervals .row { grid-template-columns: 1fr; gap: 3px; } }
-</style>
-</head>
-<body>
-
-<div class="wrap">
+<!-- generated by tools/routeviz_build.py in the courses-f26 repo; do not edit by hand -->
+<div class="rg" data-embedded>
 <header>
   <h1>Route Graph <span id="host"></span></h1>
   <p class="lede">Paste the output of <code>netstat -rn</code> from any machine and read its routing table as a picture.</p>
-  <a class="home" href="https://yash-agarwal.org/">yash-agarwal.org</a>
   <button id="theme" type="button" title="theme: auto / light / dark">&#9680; auto</button>
 </header>
 
@@ -1202,12 +1030,13 @@ Persistent Routes:
   $('#lookup').addEventListener('submit', (e) => { e.preventDefault(); if (D) trace($('#addr').value); });
   $('#addr').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (D) trace($('#addr').value); } });
   const themes = ['auto', 'light', 'dark'];
-  $('#theme').addEventListener('click', () => {
+  const embedded = document.querySelector('.rg').hasAttribute('data-embedded');  // inside a site that owns the theme
+  if (!embedded) $('#theme').addEventListener('click', () => {
     const cur = document.documentElement.dataset.theme || 'auto', next = themes[(themes.indexOf(cur) + 1) % 3];
     if (next === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = next;
     $('#theme').textContent = '\u25d0 ' + next; store.set('routeviz-theme', next);
   });
-  const t = store.get('routeviz-theme'); if (t && t !== 'auto') { document.documentElement.dataset.theme = t; $('#theme').textContent = '\u25d0 ' + t; }
+  const t = embedded ? null : store.get('routeviz-theme'); if (t && t !== 'auto') { document.documentElement.dataset.theme = t; $('#theme').textContent = '\u25d0 ' + t; }
 
   // first paint: the viewer's last table if this browser remembers one, else the macOS example
   (async () => {
@@ -1222,5 +1051,3 @@ Persistent Routes:
 })();
 
 </script>
-</body>
-</html>

@@ -28,6 +28,7 @@ export const ANALYTICS: {
 export const NAVIGATION = [
   { href: "/blog", label: "Blog" },
   { href: "/cv", label: "CV" },
+  { href: "/netstat", label: "netstat" },
   { href: "/", label: "About" },
 ]
 
