@@ -1,0 +1,27 @@
+/* Tokens and page chrome for the standalone (artifact) build; replaces the
+   SITE-TOKENS block of route-graph.css there. */
+  :root {
+    color-scheme: light;
+    --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eaeef2; --line: #d7dde3; --text: #14181c; --text-2: #55606b; --muted: #8a949e;
+    --host: #d99400; --iface: #2a78d6; --net: #1baf7a; --neighbor: #eb6834; --self: #7d8791; --remote: #4a3aa7;
+    --def: #e34948; --hl: #14181c; --match: #2a78d6; --edge: #b4bcc4; --warn: #b7791f; --tip-bg: #ffffff; --shadow: 0 8px 28px rgba(20,24,28,.16);
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #15181b; --surface: #1e2226; --surface-2: #262b30; --line: #343b42; --text: #f2f4f6; --text-2: #b6bec6; --muted: #7f8992;
+      --host: #c98500; --iface: #3987e5; --net: #199e70; --neighbor: #d95926; --self: #96a0aa; --remote: #9085e9;
+      --def: #e66767; --hl: #f2f4f6; --match: #3987e5; --edge: #4c545c; --warn: #e0a83a; --tip-bg: #262b30; --shadow: 0 8px 28px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #15181b; --surface: #1e2226; --surface-2: #262b30; --line: #343b42; --text: #f2f4f6; --text-2: #b6bec6; --muted: #7f8992;
+    --host: #c98500; --iface: #3987e5; --net: #199e70; --neighbor: #d95926; --self: #96a0aa; --remote: #9085e9;
+    --def: #e66767; --hl: #f2f4f6; --match: #3987e5; --edge: #4c545c; --warn: #e0a83a; --tip-bg: #262b30; --shadow: 0 8px 28px rgba(0,0,0,.55);
+  }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); padding-block: 0 56px; padding-inline: 16px; }
+  .rg { max-width: 1400px; margin: 0 auto; }
+  .rg .controls { top: env(safe-area-inset-top, 0px); }

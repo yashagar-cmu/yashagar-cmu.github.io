@@ -1,17 +1,23 @@
-  /* Route Graph, embedded: colors, fonts and radii come from the site's own tokens. */
-  .rg {
-    --bg: var(--background); --surface: var(--gray-2); --surface-2: var(--gray-3); --line: var(--border);
-    --text: var(--foreground); --text-2: var(--muted-foreground); --muted: var(--gray-9);
-    --host: light-dark(#d99400, #c98500); --iface: light-dark(#2a78d6, #3987e5); --net: light-dark(#1baf7a, #199e70);
-    --neighbor: light-dark(#eb6834, #d95926); --self: light-dark(#7d8791, #96a0aa); --remote: light-dark(#4a3aa7, #9085e9);
-    --def: var(--red-11); --hl: var(--foreground); --match: light-dark(#2a78d6, #3987e5); --edge: var(--gray-7);
-    --warn: light-dark(#b7791f, #e0a83a); --tip-bg: var(--gray-2);
-    --shadow-c: light-dark(rgba(20, 24, 28, .16), rgba(0, 0, 0, .55)); --shadow: 0 8px 28px var(--shadow-c);
-    --mono: var(--font-mono); --sans: var(--font-sans);
-    display: block; color: var(--text); font-size: var(--step--1); line-height: 1.5;
-  }
-  .rg #theme { display: none; }
-  .rg .controls { top: var(--bar-nav-height, 0px); }
+/* SITE-TOKENS-START */
+/* Route Graph inside the site: colors, fonts and radii come from the site's own
+   tokens (color.css, fonts.css, typography.css); the graph's categorical colors
+   are light/dark pairs that follow the same theme switch. standalone-tokens.css is
+   the equivalent block for the artifact build. */
+.rg {
+  --bg: var(--background); --surface: var(--gray-2); --surface-2: var(--gray-3); --line: var(--border);
+  --text: var(--foreground); --text-2: var(--muted-foreground); --muted: var(--gray-9);
+  --host: light-dark(#d99400, #c98500); --iface: light-dark(#2a78d6, #3987e5); --net: light-dark(#1baf7a, #199e70);
+  --neighbor: light-dark(#eb6834, #d95926); --self: light-dark(#7d8791, #96a0aa); --remote: light-dark(#4a3aa7, #9085e9);
+  --def: var(--red-11); --hl: var(--foreground); --match: light-dark(#2a78d6, #3987e5); --edge: var(--gray-7);
+  --warn: light-dark(#b7791f, #e0a83a); --tip-bg: var(--gray-2);
+  --shadow-c: light-dark(rgba(20, 24, 28, .16), rgba(0, 0, 0, .55)); --shadow: 0 8px 28px var(--shadow-c);
+  --mono: var(--font-mono); --sans: var(--font-sans);
+  display: block; color: var(--text); font-size: var(--step--1); line-height: 1.5;
+}
+.rg #theme { display: none; }
+.rg .controls { top: var(--bar-nav-height, 0px); }
+/* SITE-TOKENS-END */
+
   .rg, .rg * { box-sizing: border-box; }
   .rg [hidden] { display: none !important; }
   .rg code, .rg .mono, .rg textarea, .rg table, .rg #addr, .rg #hostname { font-family: var(--mono); }

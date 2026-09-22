@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>__TITLE__</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #fcfcfb; --surface: #ffffff; --line: #e4e2dc; --text: #0b0b0b; --text-2: #52514e; --muted: #8b8a83;
+    --host: #eda100; --iface: #2a78d6; --net: #1baf7a; --neighbor: #eb6834; --self: #8b8a83; --remote: #4a3aa7;
+    --def: #e34948; --hl: #0b0b0b; --match: #2a78d6; --edge: #b3b1a8; --tip-bg: #ffffff; --shadow: 0 6px 24px rgba(0,0,0,.14);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #1a1a19; --surface: #232322; --line: #3a3936; --text: #ffffff; --text-2: #c3c2b7; --muted: #8f8e86;
+      --host: #c98500; --iface: #3987e5; --net: #199e70; --neighbor: #d95926; --self: #9a998f; --remote: #9085e9;
+      --def: #e66767; --hl: #ffffff; --match: #3987e5; --edge: #5a5955; --tip-bg: #2a2a28; --shadow: 0 6px 24px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #1a1a19; --surface: #232322; --line: #3a3936; --text: #ffffff; --text-2: #c3c2b7; --muted: #8f8e86;
+    --host: #c98500; --iface: #3987e5; --net: #199e70; --neighbor: #d95926; --self: #9a998f; --remote: #9085e9;
+    --def: #e66767; --hl: #ffffff; --match: #3987e5; --edge: #5a5955; --tip-bg: #2a2a28; --shadow: 0 6px 24px rgba(0,0,0,.5);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; padding: 0 16px 48px; }
+  code, .mono, table { font-family: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 18px 0 8px; }
+  h1 { font-size: 20px; margin: 0; }
+  h1 span { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  #meta { color: var(--text-2); margin: 0; font-size: 13px; }
+  #theme { margin-left: auto; }
+  button, input[type=text] { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--text-2); }
+  .controls { position: sticky; top: 0; z-index: 5; background: var(--bg); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 8px 0 10px; border-bottom: 1px solid var(--line); }
+  .controls label { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
+  .controls .sep { width: 1px; height: 22px; background: var(--line); }
+  #lookup { display: inline-flex; gap: 6px; flex: 1 1 280px; min-width: 240px; }
+  #lookup input { flex: 1; font-family: ui-monospace, Menlo, Consolas, monospace; min-width: 0; }
+  .explain { margin: 12px 0 0; padding: 10px 14px; border: 1px solid var(--match); border-left-width: 5px; border-radius: 6px; background: var(--surface); white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+  .explain[hidden] { display: none; }
+  .explain .close { float: right; margin-left: 12px; }
+  #graph { overflow: auto; max-height: 82vh; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  #graph svg { display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; color: var(--text-2); font-size: 12.5px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+  .legend i.line { width: 22px; height: 0; border: 0; border-top: 2.5px solid var(--c); border-radius: 0; }
+  .legend i.dash { border-top-style: dashed; }
+  details { margin-top: 18px; }
+  summary { cursor: pointer; font-weight: 600; color: var(--text-2); }
+  .how { color: var(--text-2); max-width: 78ch; }
+  .how p { margin: 8px 0; }
+  .how b { color: var(--text); font-weight: 600; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 0; font-size: 13px; }
+  dt { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--text); }
+  dd { margin: 0; color: var(--text-2); }
+  #routes-details { overflow-x: auto; }
+  table { border-collapse: collapse; margin-top: 10px; font-size: 12.5px; width: 100%; }
+  th, td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line); vertical-align: top; white-space: nowrap; }
+  th { color: var(--text-2); font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; position: sticky; top: 46px; background: var(--bg); }
+  td.meaning { white-space: normal; color: var(--text-2); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; min-width: 20ch; }
+  tr[data-node] { cursor: pointer; }
+  tr.hidden-route { color: var(--muted); }
+  tr.hl td { background: color-mix(in srgb, var(--hl) 8%, transparent); }
+  tr.match td { background: color-mix(in srgb, var(--match) 16%, transparent); }
+  .tip { position: fixed; z-index: 10; max-width: min(560px, 92vw); padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--tip-bg); box-shadow: var(--shadow); font-size: 12.5px; pointer-events: none; }
+  .tip[hidden] { display: none; }
+  .tip .t { font-weight: 600; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .tip .n { color: var(--text-2); margin: 2px 0 6px; }
+  .tip pre { margin: 6px 0 0; font-size: 11.5px; white-space: pre-wrap; color: var(--text); }
+  .tip .f { color: var(--text-2); }
+
+  /* svg */
+  svg text { font: 12px ui-monospace, Menlo, Consolas, monospace; fill: var(--text); pointer-events: none; }
+  svg text.sub { font-size: 10.5px; fill: var(--text-2); }
+  svg text.col { font: 600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: var(--text-2); letter-spacing: .05em; }
+  svg .edge { fill: none; stroke: var(--edge); stroke-width: 1.4; transition: stroke .12s, opacity .12s; }
+  svg .edge.default { stroke: var(--def); stroke-width: 2.6; }
+  svg .edge.dashed { stroke-dasharray: 4 3; }
+  svg .edge.hl { stroke: var(--hl); stroke-width: 2.6; }
+  svg .edge.match { stroke: var(--match); stroke-width: 3.4; }
+  svg g.node { cursor: pointer; }
+  svg g.node rect { rx: 7; stroke-width: 1.5; fill: var(--c); fill-opacity: .13; stroke: var(--c); transition: stroke-width .12s; }
+  svg g.node.host { --c: var(--host); } svg g.node.iface { --c: var(--iface); } svg g.node.net { --c: var(--net); }
+  svg g.node.neighbor { --c: var(--neighbor); } svg g.node.self { --c: var(--self); } svg g.node.remote, svg g.node.default { --c: var(--remote); }
+  svg g.node.default rect { stroke-width: 2.4; fill-opacity: .22; }
+  svg g.node.dim rect { stroke-dasharray: 4 3; }
+  svg g.node.dim text { fill: var(--text-2); }
+  svg g.node.hl rect { stroke: var(--hl); stroke-width: 2.6; }
+  svg g.node.match rect { stroke: var(--match); stroke-width: 3.4; fill-opacity: .28; }
+  svg.faded g.node:not(.hl):not(.match) { opacity: .35; }
+  svg.faded .edge:not(.hl):not(.match) { opacity: .3; }
+  svg .lane { fill: var(--text); opacity: .025; }
+  @media (max-width: 700px) { body { padding: 0 12px 32px; } h1 { font-size: 17px; } th { top: 0; position: static; } .explain { font-size: 11px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Routing table of <span id="host"></span></h1>
+  <p id="meta"></p>
+  <button id="theme" type="button" title="theme: auto / light / dark">◐ auto</button>
+</header>
+
+<section class="controls" id="controls">
+  <label><input type="checkbox" data-f="fam4" checked> IPv4</label>
+  <label><input type="checkbox" data-f="fam6" checked> IPv6</label>
+  <span class="sep"></span>
+  <label title="ARP / NDP cache entries: hosts on your links whose MAC the kernel has learned"><input type="checkbox" data-f="neighbors" checked> neighbors</label>
+  <label title="169.254/16 and fe80::/10 (a next hop that lives there stays visible)"><input type="checkbox" data-f="linklocal"> link-local</label>
+  <label title="the loopback interface and this host's own addresses"><input type="checkbox" data-f="loopback" checked> loopback &amp; self</label>
+  <label title="224/4, ff00::/8 and friends"><input type="checkbox" data-f="multicast"> multicast</label>
+  <label title="what the OS adds for itself: host-sized prefixes (/32, /128), broadcast, and per-interface duplicate default routes"><input type="checkbox" data-f="bookkeeping"> bookkeeping</label>
+  <span class="sep"></span>
+  <form id="lookup" autocomplete="off">
+    <input type="text" id="addr" placeholder="where would a packet to 8.8.8.8 go?" spellcheck="false">
+    <button type="submit">trace</button>
+  </form>
+</section>
+
+<div id="explain" class="explain" hidden></div>
+<div id="graph"></div>
+<div class="legend" id="legend"></div>
+<div id="tip" class="tip" hidden></div>
+
+<details class="how">
+  <summary>How to read this</summary>
+  <p>Read left to right, the way a packet leaves the machine. <b>Interfaces</b> are the doors out. Each interface owns the <b>prefixes it is directly attached to</b> (routes without the <code>G</code> flag): anything in such a prefix is reached without a router, by asking the link for the destination's MAC address (ARP for IPv4, NDP for IPv6). The hosts the kernel has already resolved show up as <b>neighbors</b> under that prefix; a <b>router / next hop</b> is simply a neighbor that other routes point at.</p>
+  <p>Routes with the <code>G</code> flag are <b>remote prefixes</b>: the packet is handed to the next hop, which forwards it on. The <b>default route</b> (<code>0.0.0.0/0</code> or <code>::/0</code>) is the shortest prefix of all, so it only wins when nothing more specific matches, and that is what makes "everything else" work.</p>
+  <p>When several prefixes contain the destination, the kernel picks the <b>longest prefix</b> (most specific). Type an address in the box above to watch that decision happen; the chosen path lights up. Hover any node for the raw <code>netstat</code> line and its flags decoded; click to pin the highlight.</p>
+</details>
+
+<details id="glossary">
+  <summary>Flags used in this table</summary>
+  <dl id="flags"></dl>
+</details>
+
+<details open id="routes-details">
+  <summary>All routes</summary>
+  <table id="routes"><thead><tr><th>destination</th><th>gateway</th><th>flags</th><th>iface</th><th>expire</th><th>what it means</th></tr></thead><tbody></tbody></table>
+</details>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(function () {
+  'use strict';
+  const D = JSON.parse(document.getElementById('data').textContent);
+  const N = D.nodes, R = D.routes;
+  const COL = { host: 0, iface: 1, net: 2, neighbor: 3, self: 3, remote: 4, default: 4 };
+  const COLS = ['this host', 'interfaces', 'connected prefixes', 'next hops & neighbors', 'remote prefixes'];
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const state = { f: { fam4: true, fam6: true, neighbors: true, linklocal: false, loopback: true, multicast: false, bookkeeping: false },
+                  pinned: null, match: new Set(), forced: new Set(), vis: new Set(), pos: {} };
+  const isLo = (name) => /^lo\d*$/.test(name) || name === '127.0.0.1';
+
+  // ---------------------------------------------------------------- header, legend, glossary
+  $('#host').textContent = D.hostname;
+  const n4 = R.filter((r) => r.ok && r.family === 4).length, n6 = R.filter((r) => r.ok && r.family === 6).length;
+  $('#meta').textContent = `${D.source || ''} · ${D.os || ''} format · ${n4} IPv4 + ${n6} IPv6 routes · generated ${D.generated}`;
+  $('#legend').innerHTML = [['host', 'this host'], ['iface', 'interface'], ['net', 'connected prefix'], ['neighbor', 'neighbor / next hop'],
+    ['self', 'own address'], ['remote', 'remote prefix']].map(([k, t]) => `<span><i style="--c:var(--${k})"></i>${t}</span>`).join('') +
+    `<span><i class="line" style="--c:var(--def)"></i>default route</span><span><i class="line dash" style="--c:var(--edge)"></i>unresolved / reject</span>` +
+    `<span><i class="line" style="--c:var(--match)"></i>traced path</span>`;
+  const gl = Object.keys(D.glossary).sort();
+  $('#flags').innerHTML = gl.map((k) => `<dt>${esc(k)}</dt><dd>${esc(D.glossary[k].name)} — ${esc(D.glossary[k].meaning)}</dd>`).join('');
+  if (!gl.length) $('#glossary').hidden = true;
+
+  // ---------------------------------------------------------------- visibility
+  function passes(n) {
+    if (state.forced.has(n.id)) return true;
+    const f = state.f, t = n.tags;
+    if (n.family === 4 && !f.fam4) return false;
+    if (n.family === 6 && !f.fam6) return false;
+    if ((n.kind === 'neighbor' || n.kind === 'self') && !f.neighbors && !t.includes('router')) return false;
+    if (!f.loopback && (n.kind === 'self' || t.includes('loopback') || (n.kind === 'iface' && isLo(n.label)))) return false;
+    if (!f.linklocal && t.includes('linklocal')) return false;
+    if (!f.multicast && t.includes('multicast')) return false;
+    if (!f.bookkeeping && t.includes('bookkeeping')) return false;
+    return true;
+  }
+  function computeVisible() {
+    const vis = new Set();
+    (function walk(id) {
+      const n = N[id];
+      let keep = passes(n) && n.kind !== 'iface' && !(n.kind === 'neighbor' && !n.routes.length);
+      for (const c of n.children) keep = walk(c) || keep;
+      if (keep || id === 'host') vis.add(id);
+      return keep;
+    })('host');
+    state.vis = vis;
+    return vis;
+  }
+
+  // ---------------------------------------------------------------- layout: tidy tree, one column per kind
+  function layout(vis) {
+    const pitch = 46, gap = 64, charW = 7.2;
+    const widths = [90, 90, 90, 90, 90];
+    for (const id of vis) {
+      const n = N[id], c = COL[n.kind];
+      widths[c] = Math.max(widths[c], Math.min(300, Math.round(Math.max(n.label.length * charW, n.sub.length * 6.4)) + 22));
+    }
+    const xs = []; let x = 16;
+    widths.forEach((w) => { xs.push(x); x += w + gap; });
+    const pos = {}; let slot = 0;
+    (function place(id) {
+      const n = N[id], kids = n.children.filter((c) => vis.has(c));
+      let y;
+      if (kids.length) { const ys = kids.map(place); y = (ys[0] + ys[ys.length - 1]) / 2; }
+      else { y = 44 + slot * pitch; slot += 1; }
+      const c = COL[n.kind], h = n.sub ? 38 : 26;
+      pos[id] = { x: xs[c], y: y - h / 2, w: widths[c], h };
+      return y;
+    })('host');
+    state.pos = pos;
+    return { pos, W: x - gap + 16, H: 44 + Math.max(slot, 1) * pitch, cols: xs.map((x, i) => [x, widths[i]]) };
+  }
+
+  // ---------------------------------------------------------------- render
+  function scrollTo(id) {
+    const p = state.pos[id], box = $('#graph'); if (!p) return;
+    const x = p.x + p.w / 2 - box.clientWidth / 2, y = p.y + p.h / 2 - box.clientHeight / 2;
+    box.scrollTo({ left: Math.max(0, x), top: Math.max(0, y), behavior: 'smooth' });
+  }
+  function ancestors(id) { const out = []; for (let n = N[id]; n; n = n.parent ? N[n.parent] : null) out.push(n.id); return out; }
+  function subtree(id) { const out = []; (function w(i) { out.push(i); N[i].children.forEach(w); })(id); return out; }
+
+  function render() {
+    const vis = computeVisible();
+    const { pos, W, H, cols } = layout(vis);
+    const s = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
+    cols.forEach(([x, w], i) => {
+      if (i % 2) s.push(`<rect class="lane" x="${x - 12}" y="0" width="${w + 24}" height="${H}"/>`);
+      s.push(`<text class="col" x="${x}" y="20">${esc(COLS[i].toUpperCase())}</text>`);
+    });
+    for (const id of vis) {
+      const n = N[id];
+      for (const c of n.children) {
+        if (!vis.has(c)) continue;
+        const a = pos[id], b = pos[c], k = N[c];
+        const ax = a.x + a.w, ay = a.y + a.h / 2, bx = b.x, by = b.y + b.h / 2, mx = (ax + bx) / 2;
+        const cls = ['edge', k.kind === 'default' ? 'default' : '', (k.tags.includes('reject') || k.tags.includes('unresolved')) ? 'dashed' : ''].join(' ');
+        s.push(`<path class="${cls}" data-from="${id}" data-to="${c}" d="M${ax} ${ay} C${mx} ${ay} ${mx} ${by} ${bx} ${by}"/>`);
+      }
+    }
+    for (const id of vis) {
+      const n = N[id], p = pos[id];
+      const dim = n.tags.includes('reject') || n.tags.includes('unresolved') || n.tags.includes('blackhole');
+      s.push(`<g class="node ${n.kind}${dim ? ' dim' : ''}" data-id="${id}"><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}"/>`);
+      const maxc = Math.floor((p.w - 16) / 7.2);
+      if (n.sub) s.push(`<text x="${p.x + 9}" y="${p.y + 15}">${esc(n.label.slice(0, maxc))}</text><text class="sub" x="${p.x + 9}" y="${p.y + 30}">${esc(n.sub.slice(0, Math.floor(maxc * 1.15)))}</text>`);
+      else s.push(`<text x="${p.x + 9}" y="${p.y + 17}">${esc(n.label.slice(0, maxc))}</text>`);
+      s.push('</g>');
+    }
+    s.push('</svg>');
+    $('#graph').innerHTML = s.join('');
+    const svg = $('#graph svg');
+    svg.addEventListener('mouseover', (e) => { const g = e.target.closest('g.node'); if (g) { hover(g.dataset.id); showTip(g.dataset.id, e); } });
+    svg.addEventListener('mousemove', (e) => moveTip(e));
+    svg.addEventListener('mouseout', (e) => { const g = e.target.closest('g.node'); if (g) { hover(null); $('#tip').hidden = true; } });
+    svg.addEventListener('click', (e) => {
+      const g = e.target.closest('g.node');
+      state.pinned = g && state.pinned !== g.dataset.id ? g.dataset.id : null;
+      hover(null);
+    });
+    renderTable();
+    applyMatch();
+    hover(null);
+  }
+
+  // ---------------------------------------------------------------- highlight & tooltip
+  function setClass(ids, cls, on) {
+    const set = new Set(ids);
+    document.querySelectorAll('#graph g.node').forEach((g) => g.classList.toggle(cls, on && set.has(g.dataset.id)));
+    document.querySelectorAll('#graph .edge').forEach((p) => p.classList.toggle(cls, on && set.has(p.dataset.from) && set.has(p.dataset.to)));
+    document.querySelectorAll('#routes tr[data-node]').forEach((tr) => tr.classList.toggle(cls, on && set.has(tr.dataset.node)));
+  }
+  function hover(id) {
+    const target = id || state.pinned;
+    const ids = target ? ancestors(target).concat(subtree(target)) : [];
+    setClass(ids, 'hl', !!target);
+    $('#graph svg').classList.toggle('faded', !!target || state.match.size > 0);
+  }
+  function showTip(id, e) {
+    const n = N[id], tip = $('#tip');
+    let h = `<div class="t">${esc(n.label)}${n.sub ? ' · ' + esc(n.sub) : ''}</div>`;
+    if (n.note) h += `<div class="n">${esc(n.note)}</div>`;
+    if (n.kind === 'iface' && n.addrs && n.addrs.length) h += `<div class="n">addresses: ${esc(n.addrs.join(', '))}</div>`;
+    for (const i of n.routes) {
+      const r = R[i];
+      h += `<pre>${esc(r.raw.trim())}\n<span class="f">${esc((r.flags_explained || []).join('\n'))}</span></pre>`;
+    }
+    if (!n.routes.length && n.kind === 'neighbor') h += `<div class="n">no entry of its own: it appears only as the gateway of other routes</div>`;
+    tip.innerHTML = h; tip.hidden = false; moveTip(e);
+  }
+  function moveTip(e) {
+    const tip = $('#tip'); if (tip.hidden) return;
+    const w = tip.offsetWidth, hgt = tip.offsetHeight;
+    let x = e.clientX + 16, y = e.clientY + 16;
+    if (x + w > window.innerWidth - 8) x = Math.max(8, e.clientX - w - 16);
+    if (y + hgt > window.innerHeight - 8) y = Math.max(8, e.clientY - hgt - 16);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+
+  // ---------------------------------------------------------------- routes table
+  function meaning(r) {
+    if (!r.ok) return 'not understood';
+    const t = r.tags;
+    let m = { default: 'default route: everything not matched elsewhere, via ' + (r.gw.ip || r.gateway),
+              remote: 'forward to next hop ' + (r.gw.ip || r.gateway),
+              connected: 'directly attached: resolve MAC on the link, no router',
+              neighbor: r.gw.mac ? 'cached neighbor, MAC ' + r.gw.mac : 'host route on the link',
+              self: "this host's own address, delivered locally" }[r.kind];
+    if (t.includes('unresolved')) m = 'neighbor without a MAC yet (ARP/NDP incomplete)';
+    if (t.includes('reject')) m += '; REJECT (unreachable)';
+    if (t.includes('multicast')) m += '; multicast';
+    if (t.includes('linklocal')) m += '; link-local (never routed)';
+    if (t.includes('broadcast')) m = 'broadcast address';
+    if (t.includes('bookkeeping') && r.kind === 'connected') m = 'host-sized prefix the OS keeps for itself';
+    if (t.includes('static')) m += '; static';
+    return m;
+  }
+  function renderTable() {
+    const rows = R.map((r, i) => {
+      const hidden = r.node ? !state.vis.has(r.node) : false;
+      return `<tr data-i="${i}" ${r.node ? `data-node="${r.node}"` : ''} class="${hidden ? 'hidden-route' : ''}"><td>${esc(r.ok ? r.cidr + (r.scope ? '%' + r.scope : '') : r.dest)}</td><td>${esc(r.gateway)}</td><td>${esc(r.flags)}</td><td>${esc(r.iface)}</td><td>${esc(r.expire || '')}</td><td class="meaning">${esc(meaning(r))}</td></tr>`;
+    });
+    $('#routes tbody').innerHTML = rows.join('');
+    $('#routes-details summary').textContent = `All routes (${R.length})${R.some((r) => r.node && !state.vis.has(r.node)) ? ' — grey rows are hidden by the filters above' : ''}`;
+    const tb = $('#routes tbody');
+    tb.onmouseover = (e) => { const tr = e.target.closest('tr[data-node]'); if (tr) hover(tr.dataset.node); };
+    tb.onmouseout = () => hover(null);
+    tb.onclick = (e) => {
+      const tr = e.target.closest('tr[data-node]'); if (!tr) return;
+      const id = tr.dataset.node;
+      if (!state.vis.has(id)) { ancestors(id).forEach((a) => state.forced.add(a)); render(); }
+      state.pinned = id; hover(null);
+      scrollTo(id);
+    };
+  }
+
+  // ---------------------------------------------------------------- longest-prefix match
+  function toBits(s) {
+    s = s.trim().split('%')[0];
+    if (!s.includes(':')) {
+      const m = s.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/); if (!m) return null;
+      const o = m.slice(1).map(Number); if (o.some((x) => x > 255)) return null;
+      return { fam: 4, bits: o.map((x) => x.toString(2).padStart(8, '0')).join('') };
+    }
+    if (s.includes('.')) { // embedded IPv4 tail
+      const i = s.lastIndexOf(':'), v4 = toBits(s.slice(i + 1)); if (!v4) return null;
+      const hi = parseInt(v4.bits.slice(0, 16), 2).toString(16), lo = parseInt(v4.bits.slice(16), 2).toString(16);
+      s = s.slice(0, i + 1) + hi + ':' + lo;
+    }
+    const parts = s.split('::'); if (parts.length > 2) return null;
+    const head = parts[0] ? parts[0].split(':') : [], tail = parts[1] ? parts[1].split(':') : [];
+    if (parts.length === 1 && head.length !== 8) return null;
+    const groups = head.concat(Array(8 - head.length - tail.length).fill('0'), tail);
+    if (groups.length !== 8) return null;
+    let bits = '';
+    for (const g of groups) { if (!/^[0-9a-f]{1,4}$/i.test(g)) return null; bits += parseInt(g, 16).toString(2).padStart(16, '0'); }
+    return { fam: 6, bits };
+  }
+  function trace(text) {
+    const ip = toBits(text), box = $('#explain');
+    state.match = new Set(); state.forced = new Set();
+    if (!ip) { box.hidden = !text; box.textContent = text ? `"${text}" is not an IPv4 or IPv6 address` : ''; render(); return; }
+    const cands = R.map((r, i) => [r, i]).filter(([r]) => r.ok && r.family === ip.fam && ip.bits.startsWith(r.bits));
+    cands.sort((a, b) => b[0].plen - a[0].plen);
+    let lines = [`packet to ${text.trim()}`];
+    if (!cands.length) lines.push('  no route matches: the kernel would fail with "No route to host"');
+    else {
+      const w = cands[0][0];
+      lines.push(`  ${cands.length} route${cands.length === 1 ? '' : 's'} contain${cands.length === 1 ? 's' : ''} it; the longest prefix wins:`);
+      for (const [r] of cands) lines.push(`  ${r === w ? '->' : '  '} ${(r.cidr + (r.scope ? '%' + r.scope : '')).padEnd(30)} ${r.gateway.padEnd(24)} ${r.flags.padEnd(10)} ${r.iface}`);
+      const ties = cands.filter(([r]) => r.plen === w.plen);
+      if (ties.length > 1) lines.push(`  (${ties.length} tie on prefix length; the first in table order wins${ties.some(([r]) => /I/.test(r.flags) && r.os === 'bsd') ? '; I-flagged ones are interface-scoped and only apply to sockets bound to that interface' : ''})`);
+      const net = cands.find(([r]) => ['connected', 'remote', 'default'].includes(r.kind));
+      if (w.kind === 'remote' || w.kind === 'default') lines.push(`  => out ${w.iface} to next hop ${w.gw.ip || w.gateway}, which forwards it toward ${w.cidr}`);
+      else if (w.kind === 'connected') lines.push(`  => ${text.trim()} is directly on ${w.iface}: resolve its MAC with ARP/NDP and send it there`);
+      else if (w.kind === 'neighbor') lines.push(`  => ${text.trim()} is a host on ${w.iface}; MAC ${w.gw.mac || '(not resolved yet)'} ${w.gw.mac ? 'already cached' : ''}${net ? ', cloned from ' + net[0].cidr : ''}`);
+      else if (w.kind === 'self') lines.push(`  => that is this host itself; delivered over ${w.iface}`);
+      if (w.node) { ancestors(w.node).forEach((a) => { state.match.add(a); state.forced.add(a); }); }
+    }
+    box.innerHTML = `<button class="close" type="button" id="clear">clear</button>${esc(lines.join('\n'))}`;
+    box.hidden = false;
+    $('#clear').onclick = () => { $('#addr').value = ''; trace(''); };
+    render();
+  }
+  function applyMatch() {
+    setClass([...state.match], 'match', state.match.size > 0);
+    if (state.match.size) scrollTo([...state.match].pop());
+  }
+
+  // ---------------------------------------------------------------- controls
+  document.querySelectorAll('#controls input[type=checkbox]').forEach((cb) => {
+    cb.checked = state.f[cb.dataset.f];
+    cb.addEventListener('change', () => { state.f[cb.dataset.f] = cb.checked; render(); });
+  });
+  $('#lookup').addEventListener('submit', (e) => { e.preventDefault(); trace($('#addr').value); });
+  $('#addr').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); trace($('#addr').value); } });
+  const themes = ['auto', 'light', 'dark'];
+  $('#theme').addEventListener('click', () => {
+    const cur = document.documentElement.dataset.theme || 'auto', next = themes[(themes.indexOf(cur) + 1) % 3];
+    if (next === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = next;
+    $('#theme').textContent = '◐ ' + next;
+    try { localStorage.setItem('routeviz-theme', next); } catch (e) { /* ignore */ }
+  });
+  try { const t = localStorage.getItem('routeviz-theme'); if (t && t !== 'auto') { document.documentElement.dataset.theme = t; $('#theme').textContent = '◐ ' + t; } } catch (e) { /* ignore */ }
+
+  render();
+  if (D.lookups && D.lookups.length) { $('#addr').value = D.lookups[0].addr; trace(D.lookups[0].addr); }
+})();
+</script>
+</body>
+</html>

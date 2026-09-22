@@ -12,3 +12,6 @@ pnpm-debug.log*
 
 # local dev tooling
 .claude/
+
+# standalone build of src/route-graph (published as a claude.ai artifact)
+route-graph-artifact.html

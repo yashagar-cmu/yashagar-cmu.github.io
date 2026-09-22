@@ -1,0 +1,130 @@
+<!-- Route Graph markup. Styles: route-graph.css; behavior: model.js + ui.js.
+     src/pages/netstat.astro composes them; build_artifact.py makes the standalone page. -->
+<div class="rg" data-embedded>
+<header>
+  <h1>Route Graph <span id="host"></span></h1>
+  <p class="lede">Paste the output of <code>netstat -rn</code> from any machine and read its routing table as a picture.</p>
+  <button id="theme" type="button" title="theme: auto / light / dark">&#9680; auto</button>
+</header>
+
+<details class="input" id="input" open>
+  <summary>Input <span class="hint" id="meta"></span></summary>
+  <div class="body">
+    <div class="row">
+      <span class="lbl">Load an example:</span>
+      <button type="button" class="chip" data-sample="mac">macOS laptop</button>
+      <button type="button" class="chip" data-sample="linux">Linux server with VPN tunnel</button>
+      <button type="button" class="chip" data-sample="linuxvpn">same server, VPN connected (compare)</button>
+      <button type="button" class="chip" data-sample="windows">Windows PC</button>
+      <button type="button" class="chip" id="clear">clear</button>
+    </div>
+    <textarea id="netstat" spellcheck="false" placeholder="Routing tables
+
+Internet:
+Destination        Gateway            Flags               Netif Expire
+default            192.168.1.1        UGScg                 en0
+..."></textarea>
+    <details class="opt">
+      <summary>Optional: paste <code>ifconfig -a</code> or <code>ip addr</code> to label interfaces with their addresses and MACs</summary>
+      <textarea id="ifcfg" spellcheck="false" placeholder="en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	ether aa:bb:cc:dd:ee:ff
+	inet 192.168.1.42 netmask 0xffffff00 broadcast 192.168.1.255"></textarea>
+    </details>
+    <details class="opt">
+      <summary>Optional: paste an earlier <code>netstat -rn</code> to see what changed (before and after connecting a VPN, plugging in Ethernet, ...)</summary>
+      <textarea id="before" spellcheck="false" placeholder="the earlier table"></textarea>
+    </details>
+    <div class="row">
+      <label for="hostname">host name</label> <input type="text" id="hostname" value="this host">
+      <button type="button" class="primary" id="draw">Draw the graph</button>
+      <button type="button" id="share" title="puts a link that carries this table on the clipboard">copy link</button>
+      <span class="err" id="err" hidden></span>
+    </div>
+  </div>
+</details>
+
+<section class="controls" id="controls">
+  <label><input type="checkbox" data-f="fam4" id="f-fam4"> IPv4</label>
+  <label><input type="checkbox" data-f="fam6" id="f-fam6"> IPv6</label>
+  <span class="sep"></span>
+  <label title="ARP / NDP cache entries: hosts on your links whose MAC the kernel has learned"><input type="checkbox" data-f="neighbors" id="f-neighbors"> neighbors</label>
+  <label title="169.254/16 and fe80::/10 (a next hop that lives there stays visible)"><input type="checkbox" data-f="linklocal" id="f-linklocal"> link-local</label>
+  <label title="the loopback interface and this host's own addresses"><input type="checkbox" data-f="loopback" id="f-loopback"> loopback &amp; self</label>
+  <label title="224/4, ff00::/8 and friends"><input type="checkbox" data-f="multicast" id="f-multicast"> multicast</label>
+  <label title="what the OS adds for itself: host-sized prefixes (/32, /128), broadcast, and per-interface duplicate default routes"><input type="checkbox" data-f="bookkeeping" id="f-bookkeeping"> bookkeeping</label>
+  <span class="sep"></span>
+  <form id="lookup" autocomplete="off">
+    <input type="text" id="addr" placeholder="where would a packet to 8.8.8.8 go?" spellcheck="false">
+    <button type="submit">trace</button>
+  </form>
+</section>
+
+<div id="explain" class="explain" hidden></div>
+<div id="graph"></div>
+<div class="legend" id="legend"></div>
+<div id="walk" hidden></div>
+<div id="tip" class="tip" hidden></div>
+
+<section id="observations">
+  <h2>What this table says</h2>
+  <ul id="obs"></ul>
+</section>
+
+<section id="changes" hidden>
+  <h2>What changed since the earlier table</h2>
+  <div id="changes-body"></div>
+</section>
+
+<details class="sec how" open>
+  <summary>How to read this</summary>
+  <p>Read left to right, the way a packet leaves the machine. <b>Interfaces</b> are the doors out. Each interface owns the <b>prefixes it is directly attached to</b> (routes without the <code>G</code> flag): anything in such a prefix is reached without a router, by asking the link for the destination's MAC address (ARP for IPv4, NDP for IPv6). The hosts the kernel has already resolved show up as <b>neighbors</b> under that prefix; a <b>router / next hop</b> is simply a neighbor that other routes point at.</p>
+  <p>Routes with the <code>G</code> flag are <b>remote prefixes</b>: the packet is handed to the next hop, which forwards it on. The <b>default route</b> (<code>0.0.0.0/0</code> or <code>::/0</code>) is the shortest prefix of all, so it only wins when nothing more specific matches, and that is what makes "everything else" work.</p>
+  <p>When several prefixes contain the destination, the kernel picks the <b>longest prefix</b> (most specific). Type an address in the trace box to watch that decision happen: the chosen path lights up, the packet walk shows the two headers the frame carries, and the range view shows why the smallest range wins. Hover any node for the raw <code>netstat</code> line with its flags decoded; click to pin the highlight.</p>
+</details>
+
+<details class="sec how">
+  <summary>What the filters hide</summary>
+  <p><b>Link-local</b> is <code>169.254.0.0/16</code> and <code>fe80::/10</code>: valid on one physical link only, never forwarded by a router. IPv4 hosts self-assign one when DHCP fails. In IPv6 every interface always has one, and it is what neighbor discovery and router advertisements run over, which is why an IPv6 default route usually points at an <code>fe80::</code> gateway. The <code>%en0</code> suffix exists because the same prefix lives on every interface, so the address alone does not say which link is meant.</p>
+  <p><b>Loopback &amp; self</b> is <code>lo0</code>, <code>127.0.0.0/8</code>, <code>::1</code> and this host's own addresses. macOS installs a host route via <code>lo0</code> for each of its own addresses so that a packet to yourself is delivered internally instead of being sent out the Wi-Fi card. Linux keeps those in a separate local table; Windows shows them as <code>On-link /32</code> rows.</p>
+  <p><b>Multicast</b> is <code>224.0.0.0/4</code> and <code>ff00::/8</code>, one-to-many group addresses. <code>224.0.0.251</code> is mDNS (Bonjour); its MAC <code>01:00:5e:00:00:fb</code> is computed from the IP, not learned by ARP. <code>ff02::/32</code> per interface is link-scope multicast, where NDP lives (<code>ff02::1</code> all nodes, <code>ff02::2</code> all routers).</p>
+  <p><b>Bookkeeping</b> is what the OS adds for itself: host-sized cloning routes such as <code>192.168.1.1/32 UCS</code> that pin the router and the host's own address, broadcast addresses, and on macOS one interface-scoped duplicate default route per tunnel (the <code>I</code> flag) so that a socket bound to that interface has something to use. Ordinary sockets never see those.</p>
+</details>
+
+<details class="sec how">
+  <summary>Neighbors, ARP and MAC addresses</summary>
+  <p>ARP is lazy: nothing scans the subnet. A neighbor row appears only when this host tried to send to that address, or when that device sent an ARP request asking for this host. The kernel then clones a host route from the connected prefix (the <code>W</code> flag, "was cloned") and, if it was the one asking, broadcasts "who has X?" to <code>ff:ff:ff:ff:ff:ff</code>.</p>
+  <p>A <b>resolved</b> entry has a MAC in the gateway column and a countdown in the Expire column (about 20 minutes on macOS; the default gateway's entry is refreshed constantly). An <b>incomplete</b> entry shows <code>link#N</code> instead of a MAC and carries the <code>R</code> flag: the request went unanswered, typically because the device is asleep or gone, and the entry now rejects sends quickly instead of re-asking for every packet. The <code>L</code> flag is on both kinds; it marks an ARP-type entry, not a known MAC.</p>
+  <p>Two bits in the first byte of a MAC tell you a lot. The <code>0x02</code> bit set means <b>locally administered</b>: a randomized address, which phones, tablets and modern laptops use per network for privacy. The <code>0x01</code> bit set means <b>multicast</b>. A router's MAC is usually a burned-in one with neither bit set.</p>
+</details>
+
+<details class="sec how">
+  <summary>Tunnels and VPNs</summary>
+  <p>A <code>utun</code>, <code>tun</code> or <code>wg</code> interface is a tunnel endpoint: a point-to-point interface with a process instead of hardware behind it. Whatever the kernel routes to it is handed to that process as raw packets, and whatever the process writes back looks like packets arriving on it. macOS creates several for its own services (Continuity, iMessage/FaceTime signaling, iCloud Private Relay); those carry only link-local addresses and scoped routes and never see ordinary traffic.</p>
+  <p>Traffic reaches a tunnel three ways. <b>Routes</b>: give it an address and point prefixes at it; every app's packets follow the longest-prefix match without knowing. VPNs add <code>0.0.0.0/1</code> and <code>128.0.0.0/1</code>, which beat the real default route by one bit without deleting it, plus a host route for the VPN server via the real gateway so the encrypted traffic does not loop back in. <b>Binding</b>: an app binds its socket to the interface and uses that interface's scoped routes. <b>Policy</b>: the kernel steers flows by app or domain before routing happens, which is how per-app VPNs and Apple's relay work and why the table shows nothing about them. Paste a before-and-after pair above to watch a VPN take over.</p>
+</details>
+
+<details class="sec how">
+  <summary>The same idea on three operating systems</summary>
+  <table>
+    <tr><th>Concept</th><th>macOS / BSD</th><th>Linux</th><th>Windows</th></tr>
+    <tr><td>directly on the link, no router</td><td>gateway <code>link#12</code>, flags <code>UCS</code></td><td>gateway <code>0.0.0.0</code>, flags <code>U</code></td><td>gateway <code>On-link</code></td></tr>
+    <tr><td>via a next hop</td><td><code>UGS</code> with the router's IP</td><td><code>UG</code> with the router's IP</td><td>gateway column holds the router's IP</td></tr>
+    <tr><td>default route</td><td><code>default</code></td><td><code>0.0.0.0</code> mask <code>0.0.0.0</code></td><td><code>0.0.0.0</code> mask <code>0.0.0.0</code>, lowest metric wins</td></tr>
+    <tr><td>prefix length</td><td><code>10/24</code>, classful shorthand when omitted (<code>127</code> = /8)</td><td>Genmask column</td><td>Netmask column</td></tr>
+    <tr><td>ARP cache</td><td>inside the table as <code>UHLW</code> host routes</td><td>separate: <code>ip neigh</code></td><td>separate: <code>arp -a</code></td></tr>
+    <tr><td>own addresses</td><td>host routes via <code>lo0</code></td><td>separate local table</td><td><code>On-link /32</code> rows</td></tr>
+  </table>
+</details>
+
+<details class="sec" id="glossary">
+  <summary>Flags used in this table</summary>
+  <dl id="flags"></dl>
+</details>
+
+<details class="sec" open id="routes-details">
+  <summary>All routes</summary>
+  <table id="routes"><thead><tr><th>destination</th><th>gateway</th><th>flags</th><th>iface</th><th>expire</th><th>what it means</th></tr></thead><tbody></tbody></table>
+</details>
+
+<footer>Everything runs in your browser; nothing you paste leaves the page, and "copy link" only puts the table into the link itself. Formats understood: macOS / BSD <code>netstat -rn</code>, Linux <code>netstat -rn</code> and <code>route -n</code> (IPv4 and IPv6 tables), Windows <code>netstat -rn</code> / <code>route print</code>. Built while taking 15-441 at CMU.</footer>
+</div>

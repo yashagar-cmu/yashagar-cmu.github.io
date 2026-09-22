@@ -22,6 +22,7 @@ npm run build    # -> dist/
 | Projects    | `src/content/projects/`  |
 | News        | `src/content/news/`      |
 | Nav/socials | `src/consts.ts`          |
+| netstat     | `src/route-graph/` (see its README) |
 
 `src/content/blog/formatting-reference/` is a `draft: true` post documenting every
 markdown feature the theme supports. It never publishes; delete it when you no
