@@ -171,9 +171,9 @@ Persistent Routes:
   }
 
   // ---------------------------------------------------------------- layout: tidy tree, one column per kind
-  function layout(vis) {
-    const pitch = 46, gap = 64, charW = 7.2, widths = [90, 90, 90, 90, 90];
-    for (const id of vis) { const n = N[id], c = COL[n.kind]; widths[c] = Math.max(widths[c], Math.min(300, Math.round(Math.max(n.label.length * charW, n.sub.length * 6.4)) + 22)); }
+  function layout(vis, gap = 64, cap = 300) {
+    const pitch = 46, charW = 7.2, widths = [90, 90, 90, 90, 90];
+    for (const id of vis) { const n = N[id], c = COL[n.kind]; widths[c] = Math.max(widths[c], Math.min(cap, Math.round(Math.max(n.label.length * charW, n.sub.length * 6.4)) + 22)); }
     const xs = []; let x = 16; widths.forEach((w) => { xs.push(x); x += w + gap; });
     const pos = {}; let slot = 0;
     (function place(id) {
@@ -186,7 +186,8 @@ Persistent Routes:
   }
   function scrollTo(id) {
     const p = state.pos[id], box = $('#graph'); if (!p) return;
-    box.scrollTo({ left: Math.max(0, p.x + p.w / 2 - box.clientWidth / 2), top: Math.max(0, p.y + p.h / 2 - box.clientHeight / 2), behavior: 'smooth' });
+    const k = state.scale || 1;
+    box.scrollTo({ left: Math.max(0, (p.x + p.w / 2) * k - box.clientWidth / 2), top: Math.max(0, (p.y + p.h / 2) * k - box.clientHeight / 2), behavior: 'smooth' });
   }
   function ancestors(id) { const out = []; for (let n = N[id]; n; n = n.parent ? N[n.parent] : null) out.push(n.id); return out; }
   function highlightIds(ids) { const all = []; ids.forEach((id) => { if (N[id]) all.push(...ancestors(id)); }); setClass(all, 'hl', all.length > 0); const svg = $('#graph svg'); if (svg) svg.classList.toggle('faded', all.length > 0 || state.match.size > 0); }
@@ -199,8 +200,16 @@ Persistent Routes:
 
   // ---------------------------------------------------------------- render
   function render() {
-    const vis = computeVisible(), { pos, W, H, cols } = layout(vis);
-    const s = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
+    const vis = computeVisible(), box = $('#graph'), avail = Math.max(0, box.clientWidth - 2);
+    // Fit the width available: tighten gaps and columns first, then scale the whole
+    // drawing down (to a floor), and only past that fall back to horizontal scrolling.
+    let L = layout(vis);
+    if (avail && L.W > avail) L = layout(vis, 36, 240);
+    let scale = 1;
+    if (avail && L.W > avail) { scale = avail / L.W; if (scale < 0.55) scale = 1; }
+    state.scale = scale;
+    const { pos, W, H, cols } = L;
+    const s = [`<svg xmlns="http://www.w3.org/2000/svg" width="${Math.round(W * scale)}" height="${Math.round(H * scale)}" viewBox="0 0 ${W} ${H}">`];
     cols.forEach(([x, w], i) => { if (i % 2) s.push(`<rect class="lane" x="${x - 12}" y="0" width="${w + 24}" height="${H}"/>`); s.push(`<text class="col" x="${x}" y="20">${esc(COLS[i].toUpperCase())}</text>`); });
     for (const id of vis) for (const c of N[id].children) {
       if (!vis.has(c)) continue;
@@ -211,9 +220,9 @@ Persistent Routes:
     for (const id of vis) {
       const n = N[id], p = pos[id], dim = n.tags.includes('reject') || n.tags.includes('unresolved') || n.tags.includes('blackhole');
       s.push(`<g class="node ${n.kind}${dim ? ' dim' : ''}" data-id="${esc(id)}"><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}"/>`);
-      const maxc = Math.floor((p.w - 16) / 7.2);
-      if (n.sub) s.push(`<text x="${p.x + 9}" y="${p.y + 15}">${esc(n.label.slice(0, maxc))}</text><text class="sub" x="${p.x + 9}" y="${p.y + 30}">${esc(n.sub.slice(0, Math.floor(maxc * 1.15)))}</text>`);
-      else s.push(`<text x="${p.x + 9}" y="${p.y + 17}">${esc(n.label.slice(0, maxc))}</text>`);
+      const maxc = Math.floor((p.w - 16) / 7.2), cut = (t, m) => (t.length > m ? t.slice(0, Math.max(1, m - 1)) + '\u2026' : t);
+      if (n.sub) s.push(`<text x="${p.x + 9}" y="${p.y + 15}">${esc(cut(n.label, maxc))}</text><text class="sub" x="${p.x + 9}" y="${p.y + 30}">${esc(cut(n.sub, Math.floor(maxc * 1.15)))}</text>`);
+      else s.push(`<text x="${p.x + 9}" y="${p.y + 17}">${esc(cut(n.label, maxc))}</text>`);
       if (state.added.has(id)) s.push(`<text class="badge" x="${p.x + p.w - 6}" y="${p.y + 12}" text-anchor="end">NEW</text>`);
       s.push('</g>');
     }
@@ -418,14 +427,23 @@ Persistent Routes:
     $('#flags').innerHTML = gl.map((k) => `<dt>${esc(k)}</dt><dd>${esc(D.glossary[k].name)} — ${esc(D.glossary[k].meaning)}</dd>`).join('');
     $('#glossary').hidden = !gl.length;
     if (fromUser) { store.set('routeviz-netstat', text); store.set('routeviz-ifcfg', $('#ifcfg').value); store.set('routeviz-before', $('#before').value); store.set('routeviz-host', $('#hostname').value); $('#input').open = false; }
+    document.querySelectorAll('[data-needs-table]').forEach((el) => { el.hidden = false; });
     renderObservations(); renderChanges(); render(); return true;
   }
   document.querySelectorAll('.chip[data-sample]').forEach((b) => b.addEventListener('click', () => {
     const k = b.dataset.sample; $('#netstat').value = SAMPLES[k]; $('#ifcfg').value = ''; $('#before').value = k === 'linuxvpn' ? SAMPLES.linux : '';
     $('#hostname').value = { mac: 'laptop', linux: 'server', linuxvpn: 'server', windows: 'desktop' }[k]; draw('sample');
   }));
-  $('#clear').addEventListener('click', () => { $('#netstat').value = ''; $('#ifcfg').value = ''; $('#before').value = ''; $('#err').hidden = true; $('#netstat').focus(); });
+  $('#clear').addEventListener('click', () => {
+    $('#netstat').value = ''; $('#ifcfg').value = ''; $('#before').value = ''; $('#err').hidden = true; $('#meta').textContent = ''; $('#host').textContent = '';
+    D = null; N = {}; R = []; $('#explain').hidden = true; $('#walk').hidden = true; $('#changes').hidden = true;
+    document.querySelectorAll('[data-needs-table]').forEach((el) => { el.hidden = true; });
+    ['routeviz-netstat', 'routeviz-ifcfg', 'routeviz-before', 'routeviz-host'].forEach((k) => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } });
+    $('#netstat').focus();
+  });
   $('#draw').addEventListener('click', () => draw(true));
+  let resizeTimer = null;
+  window.addEventListener('resize', () => { if (!D) return; clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 150); });
   $('#netstat').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) draw(true); });
   document.querySelectorAll('#controls input[type=checkbox]').forEach((cb) => {
     cb.checked = state.f[cb.dataset.f];
@@ -433,23 +451,15 @@ Persistent Routes:
   });
   $('#lookup').addEventListener('submit', (e) => { e.preventDefault(); if (D) trace($('#addr').value); });
   $('#addr').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (D) trace($('#addr').value); } });
-  const themes = ['auto', 'light', 'dark'];
-  const embedded = document.querySelector('.rg').hasAttribute('data-embedded');  // inside a site that owns the theme
-  if (!embedded) $('#theme').addEventListener('click', () => {
-    const cur = document.documentElement.dataset.theme || 'auto', next = themes[(themes.indexOf(cur) + 1) % 3];
-    if (next === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = next;
-    $('#theme').textContent = '◐ ' + next; store.set('routeviz-theme', next);
-  });
-  const t = embedded ? null : store.get('routeviz-theme'); if (t && t !== 'auto') { document.documentElement.dataset.theme = t; $('#theme').textContent = '\u25d0 ' + t; }
 
   // first paint: the viewer's last table if this browser remembers one, else the macOS example
+  // first paint: a table carried by a share link, else the one this browser last drew, else nothing
   (async () => {
     if (await loadFromHash()) { $('#input').open = false; return; }
     const saved = store.get('routeviz-netstat');
     if (saved && saved.trim()) {
       $('#netstat').value = saved; $('#ifcfg').value = store.get('routeviz-ifcfg') || ''; $('#before').value = store.get('routeviz-before') || ''; $('#hostname').value = store.get('routeviz-host') || 'this host';
-      if (draw(false)) { $('#input').open = false; return; }
+      if (draw(false)) $('#input').open = false;
     }
-    document.querySelector('.chip[data-sample="mac"]').click();
   })();
 })();

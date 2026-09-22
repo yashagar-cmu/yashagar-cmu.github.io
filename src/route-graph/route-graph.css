@@ -1,8 +1,6 @@
-/* SITE-TOKENS-START */
 /* Route Graph inside the site: colors, fonts and radii come from the site's own
    tokens (color.css, fonts.css, typography.css); the graph's categorical colors
-   are light/dark pairs that follow the same theme switch. standalone-tokens.css is
-   the equivalent block for the artifact build. */
+   are light/dark pairs that follow the same theme switch. */
 .rg {
   --bg: var(--background); --surface: var(--gray-2); --surface-2: var(--gray-3); --line: var(--border);
   --text: var(--foreground); --text-2: var(--muted-foreground); --muted: var(--gray-9);
@@ -14,9 +12,7 @@
   --mono: var(--font-mono); --sans: var(--font-sans);
   display: block; color: var(--text); font-size: var(--step--1); line-height: 1.5;
 }
-.rg #theme { display: none; }
 .rg .controls { top: var(--bar-nav-height, 0px); }
-/* SITE-TOKENS-END */
 
   .rg, .rg * { box-sizing: border-box; }
   .rg [hidden] { display: none !important; }
@@ -28,7 +24,6 @@
   .rg h2 { font-size: var(--step-0, 15px); font-weight: var(--font-weight-medium, 600); margin: 22px 0 8px; color: var(--text-2); letter-spacing: .02em; }
   .rg h4 { font-size: 13px; margin: 14px 0 4px; color: var(--text-2); }
   .rg .lede { margin: 0; color: var(--text-2); }
-  .rg #theme { margin-left: auto; }
   .rg button, .rg input[type=text], .rg textarea { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; }
   .rg button { cursor: pointer; }
   .rg button:hover { border-color: var(--text-2); }

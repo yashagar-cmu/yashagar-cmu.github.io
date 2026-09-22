@@ -1,10 +1,10 @@
-<!-- Route Graph markup. Styles: route-graph.css; behavior: model.js + ui.js.
-     src/pages/netstat.astro composes them; build_artifact.py makes the standalone page. -->
-<div class="rg" data-embedded>
+<!-- Route Graph markup. Styles: route-graph.css; behavior: model.js + ui.js;
+     src/pages/netstat.astro composes them. Elements marked data-needs-table stay
+     hidden until a table has been drawn. -->
+<div class="rg">
 <header>
   <h1>Route Graph <span id="host"></span></h1>
   <p class="lede">Paste the output of <code>netstat -rn</code> from any machine and read its routing table as a picture.</p>
-  <button id="theme" type="button" title="theme: auto / light / dark">&#9680; auto</button>
 </header>
 
 <details class="input" id="input" open>
@@ -18,7 +18,9 @@
       <button type="button" class="chip" data-sample="windows">Windows PC</button>
       <button type="button" class="chip" id="clear">clear</button>
     </div>
-    <textarea id="netstat" spellcheck="false" placeholder="Routing tables
+    <textarea id="netstat" spellcheck="false" placeholder="Paste the whole output here, headers included, then Draw (or Cmd/Ctrl+Enter).
+
+Routing tables
 
 Internet:
 Destination        Gateway            Flags               Netif Expire
@@ -43,7 +45,7 @@ default            192.168.1.1        UGScg                 en0
   </div>
 </details>
 
-<section class="controls" id="controls">
+<section class="controls" id="controls" data-needs-table hidden>
   <label><input type="checkbox" data-f="fam4" id="f-fam4"> IPv4</label>
   <label><input type="checkbox" data-f="fam6" id="f-fam6"> IPv6</label>
   <span class="sep"></span>
@@ -60,12 +62,12 @@ default            192.168.1.1        UGScg                 en0
 </section>
 
 <div id="explain" class="explain" hidden></div>
-<div id="graph"></div>
-<div class="legend" id="legend"></div>
+<div id="graph" data-needs-table hidden></div>
+<div class="legend" id="legend" data-needs-table hidden></div>
 <div id="walk" hidden></div>
 <div id="tip" class="tip" hidden></div>
 
-<section id="observations">
+<section id="observations" data-needs-table hidden>
   <h2>What this table says</h2>
   <ul id="obs"></ul>
 </section>
@@ -116,12 +118,12 @@ default            192.168.1.1        UGScg                 en0
   </table>
 </details>
 
-<details class="sec" id="glossary">
+<details class="sec" id="glossary" data-needs-table hidden>
   <summary>Flags used in this table</summary>
   <dl id="flags"></dl>
 </details>
 
-<details class="sec" open id="routes-details">
+<details class="sec" open id="routes-details" data-needs-table hidden>
   <summary>All routes</summary>
   <table id="routes"><thead><tr><th>destination</th><th>gateway</th><th>flags</th><th>iface</th><th>expire</th><th>what it means</th></tr></thead><tbody></tbody></table>
 </details>
