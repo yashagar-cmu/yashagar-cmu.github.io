@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Paste any netstat -rn output (macOS, Linux, Windows) and read the routing table as a graph: interfaces, connected prefixes, next hops, neighbors, with decoded flags and a longest-prefix-match packet trace.">
+<link rel="icon" href="/favicon.svg">
+<link rel="canonical" href="https://yash-agarwal.org/tools/routes/">
+<title>Route Graph</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f6f8; --surface: #ffffff; --surface-2: #eaeef2; --line: #d7dde3; --text: #14181c; --text-2: #55606b; --muted: #8a949e;
+    --host: #d99400; --iface: #2a78d6; --net: #1baf7a; --neighbor: #eb6834; --self: #7d8791; --remote: #4a3aa7;
+    --def: #e34948; --hl: #14181c; --match: #2a78d6; --edge: #b4bcc4; --warn: #b7791f; --tip-bg: #ffffff; --shadow: 0 8px 28px rgba(20,24,28,.16);
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    --sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #15181b; --surface: #1e2226; --surface-2: #262b30; --line: #343b42; --text: #f2f4f6; --text-2: #b6bec6; --muted: #7f8992;
+      --host: #c98500; --iface: #3987e5; --net: #199e70; --neighbor: #d95926; --self: #96a0aa; --remote: #9085e9;
+      --def: #e66767; --hl: #f2f4f6; --match: #3987e5; --edge: #4c545c; --warn: #e0a83a; --tip-bg: #262b30; --shadow: 0 8px 28px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #15181b; --surface: #1e2226; --surface-2: #262b30; --line: #343b42; --text: #f2f4f6; --text-2: #b6bec6; --muted: #7f8992;
+    --host: #c98500; --iface: #3987e5; --net: #199e70; --neighbor: #d95926; --self: #96a0aa; --remote: #9085e9;
+    --def: #e66767; --hl: #f2f4f6; --match: #3987e5; --edge: #4c545c; --warn: #e0a83a; --tip-bg: #262b30; --shadow: 0 8px 28px rgba(0,0,0,.55);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--sans); padding-block: 0 56px; padding-inline: 16px; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  code, .mono, textarea, table, #addr, #hostname { font-family: var(--mono); }
+  code { font-size: .93em; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; padding: 22px 0 6px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+  h1 span { font-family: var(--mono); font-weight: 500; }
+  h2 { font-size: 15px; font-weight: 600; margin: 22px 0 8px; color: var(--text-2); letter-spacing: .02em; }
+  h4 { font-size: 13px; margin: 14px 0 4px; color: var(--text-2); }
+  .lede { margin: 0; color: var(--text-2); }
+  .home { color: var(--text-2); text-decoration: none; font-size: 13px; border-bottom: 1px dotted var(--line); }
+  .home:hover { color: var(--text); }
+  #theme { margin-left: auto; }
+  button, input[type=text], textarea { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--text-2); }
+  button.primary { background: var(--match); border-color: var(--match); color: #fff; font-weight: 500; }
+  button.primary:hover { filter: brightness(1.08); }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--match); outline-offset: 1px; }
+  .chip { padding: 3px 10px; border-radius: 999px; font-size: 12.5px; background: var(--surface-2); border-color: transparent; }
+  .chip:hover { border-color: var(--text-2); }
+  .tag { display: inline-block; padding: 0 6px; border-radius: 4px; background: var(--surface-2); color: var(--text-2); font: 500 11px var(--sans); vertical-align: 1px; }
+
+  /* input panel */
+  .input { margin-top: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  .input summary { padding: 10px 14px; cursor: pointer; font-weight: 600; color: var(--text-2); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+  .input summary .hint { font-weight: 400; margin-left: auto; font-size: 12.5px; }
+  .input .body { padding: 0 14px 14px; display: grid; gap: 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+  .row label, .row .lbl { color: var(--text-2); font-size: 12.5px; }
+  textarea { width: 100%; min-height: 200px; resize: vertical; font-size: 12.5px; line-height: 1.4; white-space: pre; tab-size: 4; }
+  textarea#ifcfg, textarea#before { min-height: 90px; }
+  #hostname { width: 14ch; }
+  .err { color: var(--def); font-size: 13px; }
+  details.opt { margin: 0; }
+  details.opt summary { padding: 0; font-weight: 500; font-size: 12.5px; }
+  details.opt textarea { margin-top: 8px; }
+
+  /* controls */
+  .controls { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 0; border-bottom: 1px solid var(--line); margin-top: 14px; }
+  .controls label { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
+  .controls .sep { width: 1px; height: 22px; background: var(--line); }
+  #lookup { display: inline-flex; gap: 6px; flex: 1 1 280px; min-width: 240px; }
+  #lookup input { flex: 1; min-width: 0; }
+  .explain { margin: 12px 0 0; padding: 10px 14px; border: 1px solid var(--match); border-left-width: 5px; border-radius: 6px; background: var(--surface); white-space: pre-wrap; font-family: var(--mono); font-size: 12.5px; }
+  .explain .close { float: right; margin-left: 12px; }
+  #walk { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  .steps p { margin: 6px 0; max-width: 90ch; }
+  .frame { display: grid; gap: 4px; margin: 10px 0; max-width: 720px; font-family: var(--mono); font-size: 12px; }
+  .hdr { display: grid; grid-template-columns: 82px repeat(3, 1fr); gap: 4px; }
+  .hdr span { padding: 6px 8px; border-radius: 5px; background: color-mix(in srgb, var(--c) 14%, transparent); border: 1.5px solid var(--c); overflow-wrap: anywhere; }
+  .hdr span.lbl { background: var(--c); color: #fff; font-weight: 600; display: flex; align-items: center; }
+  .hdr small { display: block; font: 500 10px var(--sans); color: var(--text-2); letter-spacing: .04em; text-transform: uppercase; }
+  .hdr.eth { --c: var(--neighbor); } .hdr.ip { --c: var(--remote); } .hdr.pl { --c: var(--muted); grid-template-columns: 82px 1fr; }
+  .intervals { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .intervals .cap { color: var(--text-2); margin: 4px 0 10px; max-width: 90ch; }
+  .intervals .row { display: grid; grid-template-columns: minmax(120px, 26ch) 1fr 12ch; gap: 10px; align-items: center; margin: 5px 0; flex-wrap: nowrap; }
+  .intervals .lbl { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+  .intervals .w { font-size: 12px; color: var(--text-2); }
+  .intervals .bar { position: relative; height: 16px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); }
+  .intervals .bar i { position: absolute; top: 0; bottom: 0; }
+  .intervals .child { background: color-mix(in srgb, var(--match) 45%, transparent); }
+  .intervals .pt { width: 10px; height: 10px; top: 2px; margin-left: -5px; border-radius: 50%; background: var(--def); box-shadow: 0 0 0 2px var(--surface); }
+  .intervals .row.win .bar { border-color: var(--match); box-shadow: 0 0 0 1px var(--match); }
+  .bits { font-family: var(--mono); font-size: 11.5px; letter-spacing: .02em; overflow-wrap: anywhere; color: var(--text-2); }
+  .bits b { color: var(--match); }
+  .intervals .bits span { font-family: var(--sans); }
+  #graph { overflow: auto; max-height: 82vh; margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  #graph svg { display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0 0; color: var(--text-2); font-size: 12.5px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+  .legend i.line { width: 22px; height: 0; border: 0; border-top: 2.5px solid var(--c); border-radius: 0; }
+  .legend i.dash { border-top-style: dashed; }
+  #obs { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; max-width: 100ch; }
+  #obs li { padding: 7px 12px; border-left: 4px solid var(--net); border-radius: 4px; background: var(--surface); cursor: default; }
+  #obs li.warn { border-left-color: var(--warn); }
+  #obs li:hover { background: var(--surface-2); }
+  #changes-body ul { margin: 0 0 6px; padding-left: 18px; max-width: 100ch; }
+  table.mini { width: auto; margin-top: 4px; }
+  table.mini td { padding-right: 18px; }
+  table.mini.added td:first-child { color: var(--net); } table.mini.removed td:first-child { color: var(--def); text-decoration: line-through; }
+  details.sec { margin-top: 18px; }
+  details.sec summary { cursor: pointer; font-weight: 600; color: var(--text-2); }
+  .how { color: var(--text-2); max-width: 82ch; }
+  .how p { margin: 8px 0; }
+  .how b { color: var(--text); font-weight: 600; }
+  .how table { width: auto; margin-top: 8px; }
+  .how td, .how th { white-space: normal; font-family: var(--sans); font-size: 13px; }
+  .how td code { white-space: nowrap; }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 10px 0 0; font-size: 13px; }
+  dt { font-family: var(--mono); color: var(--text); }
+  dd { margin: 0; color: var(--text-2); }
+  #routes-details { overflow-x: auto; }
+  table { border-collapse: collapse; margin-top: 10px; font-size: 12.5px; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line); vertical-align: top; white-space: nowrap; }
+  th { color: var(--text-2); font-weight: 600; font-family: var(--sans); }
+  td.meaning { white-space: normal; color: var(--text-2); font-family: var(--sans); min-width: 20ch; }
+  tr[data-node] { cursor: pointer; }
+  tr.hidden-route { color: var(--muted); }
+  tr.hl td { background: color-mix(in srgb, var(--hl) 8%, transparent); }
+  tr.match td { background: color-mix(in srgb, var(--match) 16%, transparent); }
+  .tip { position: fixed; z-index: 10; max-width: min(600px, 92vw); padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--tip-bg); box-shadow: var(--shadow); font-size: 12.5px; pointer-events: none; }
+  .tip .t { font-weight: 600; font-family: var(--mono); }
+  .tip .n { color: var(--text-2); margin: 2px 0 6px; }
+  .tip pre { margin: 6px 0 0; font-size: 11.5px; white-space: pre-wrap; color: var(--text); font-family: var(--mono); }
+  .tip .f { color: var(--text-2); }
+  footer { margin-top: 28px; color: var(--muted); font-size: 12.5px; max-width: 100ch; }
+
+  /* svg */
+  svg text { font: 12px var(--mono); fill: var(--text); pointer-events: none; }
+  svg text.sub { font-size: 10.5px; fill: var(--text-2); }
+  svg text.col { font: 600 11px var(--sans); fill: var(--text-2); letter-spacing: .06em; }
+  svg text.badge { font: 600 9px var(--sans); fill: var(--net); letter-spacing: .08em; }
+  svg .edge { fill: none; stroke: var(--edge); stroke-width: 1.4; transition: stroke .12s, opacity .12s; }
+  svg .edge.default { stroke: var(--def); stroke-width: 2.6; }
+  svg .edge.dashed { stroke-dasharray: 4 3; }
+  svg .edge.hl { stroke: var(--hl); stroke-width: 2.6; }
+  svg .edge.match { stroke: var(--match); stroke-width: 3.4; }
+  svg g.node { cursor: pointer; }
+  svg g.node rect { rx: 7; stroke-width: 1.5; fill: var(--c); fill-opacity: .13; stroke: var(--c); transition: stroke-width .12s; }
+  svg g.node.host { --c: var(--host); } svg g.node.iface { --c: var(--iface); } svg g.node.net { --c: var(--net); }
+  svg g.node.neighbor { --c: var(--neighbor); } svg g.node.self { --c: var(--self); } svg g.node.remote, svg g.node.default { --c: var(--remote); }
+  svg g.node.default rect { stroke-width: 2.4; fill-opacity: .22; }
+  svg g.node.dim rect { stroke-dasharray: 4 3; }
+  svg g.node.dim text { fill: var(--text-2); }
+  svg g.node.hl rect { stroke: var(--hl); stroke-width: 2.6; }
+  svg g.node.match rect { stroke: var(--match); stroke-width: 3.4; fill-opacity: .28; }
+  svg.faded g.node:not(.hl):not(.match) { opacity: .35; }
+  svg.faded .edge:not(.hl):not(.match) { opacity: .3; }
+  svg .lane { fill: var(--text); opacity: .03; }
+  @media (prefers-reduced-motion: reduce) { svg .edge, svg g.node rect { transition: none; } }
+  @media (max-width: 700px) { h1 { font-size: 18px; } .explain { font-size: 11px; } .input summary .hint { margin-left: 0; } .hdr { grid-template-columns: 1fr 1fr; } .hdr span.lbl { grid-column: 1 / -1; } .intervals .row { grid-template-columns: 1fr; gap: 3px; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <h1>Route Graph <span id="host"></span></h1>
+  <p class="lede">Paste the output of <code>netstat -rn</code> from any machine and read its routing table as a picture.</p>
+  <a class="home" href="https://yash-agarwal.org/">yash-agarwal.org</a>
+  <button id="theme" type="button" title="theme: auto / light / dark">&#9680; auto</button>
+</header>
+
+<details class="input" id="input" open>
+  <summary>Input <span class="hint" id="meta"></span></summary>
+  <div class="body">
+    <div class="row">
+      <span class="lbl">Load an example:</span>
+      <button type="button" class="chip" data-sample="mac">macOS laptop</button>
+      <button type="button" class="chip" data-sample="linux">Linux server with VPN tunnel</button>
+      <button type="button" class="chip" data-sample="linuxvpn">same server, VPN connected (compare)</button>
+      <button type="button" class="chip" data-sample="windows">Windows PC</button>
+      <button type="button" class="chip" id="clear">clear</button>
+    </div>
+    <textarea id="netstat" spellcheck="false" placeholder="Routing tables
+
+Internet:
+Destination        Gateway            Flags               Netif Expire
+default            192.168.1.1        UGScg                 en0
+..."></textarea>
+    <details class="opt">
+      <summary>Optional: paste <code>ifconfig -a</code> or <code>ip addr</code> to label interfaces with their addresses and MACs</summary>
+      <textarea id="ifcfg" spellcheck="false" placeholder="en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	ether aa:bb:cc:dd:ee:ff
+	inet 192.168.1.42 netmask 0xffffff00 broadcast 192.168.1.255"></textarea>
+    </details>
+    <details class="opt">
+      <summary>Optional: paste an earlier <code>netstat -rn</code> to see what changed (before and after connecting a VPN, plugging in Ethernet, ...)</summary>
+      <textarea id="before" spellcheck="false" placeholder="the earlier table"></textarea>
+    </details>
+    <div class="row">
+      <label for="hostname">host name</label> <input type="text" id="hostname" value="this host">
+      <button type="button" class="primary" id="draw">Draw the graph</button>
+      <button type="button" id="share" title="puts a link that carries this table on the clipboard">copy link</button>
+      <span class="err" id="err" hidden></span>
+    </div>
+  </div>
+</details>
+
+<section class="controls" id="controls">
+  <label><input type="checkbox" data-f="fam4" id="f-fam4"> IPv4</label>
+  <label><input type="checkbox" data-f="fam6" id="f-fam6"> IPv6</label>
+  <span class="sep"></span>
+  <label title="ARP / NDP cache entries: hosts on your links whose MAC the kernel has learned"><input type="checkbox" data-f="neighbors" id="f-neighbors"> neighbors</label>
+  <label title="169.254/16 and fe80::/10 (a next hop that lives there stays visible)"><input type="checkbox" data-f="linklocal" id="f-linklocal"> link-local</label>
+  <label title="the loopback interface and this host's own addresses"><input type="checkbox" data-f="loopback" id="f-loopback"> loopback &amp; self</label>
+  <label title="224/4, ff00::/8 and friends"><input type="checkbox" data-f="multicast" id="f-multicast"> multicast</label>
+  <label title="what the OS adds for itself: host-sized prefixes (/32, /128), broadcast, and per-interface duplicate default routes"><input type="checkbox" data-f="bookkeeping" id="f-bookkeeping"> bookkeeping</label>
+  <span class="sep"></span>
+  <form id="lookup" autocomplete="off">
+    <input type="text" id="addr" placeholder="where would a packet to 8.8.8.8 go?" spellcheck="false">
+    <button type="submit">trace</button>
+  </form>
+</section>
+
+<div id="explain" class="explain" hidden></div>
+<div id="graph"></div>
+<div class="legend" id="legend"></div>
+<div id="walk" hidden></div>
+<div id="tip" class="tip" hidden></div>
+
+<section id="observations">
+  <h2>What this table says</h2>
+  <ul id="obs"></ul>
+</section>
+
+<section id="changes" hidden>
+  <h2>What changed since the earlier table</h2>
+  <div id="changes-body"></div>
+</section>
+
+<details class="sec how" open>
+  <summary>How to read this</summary>
+  <p>Read left to right, the way a packet leaves the machine. <b>Interfaces</b> are the doors out. Each interface owns the <b>prefixes it is directly attached to</b> (routes without the <code>G</code> flag): anything in such a prefix is reached without a router, by asking the link for the destination's MAC address (ARP for IPv4, NDP for IPv6). The hosts the kernel has already resolved show up as <b>neighbors</b> under that prefix; a <b>router / next hop</b> is simply a neighbor that other routes point at.</p>
+  <p>Routes with the <code>G</code> flag are <b>remote prefixes</b>: the packet is handed to the next hop, which forwards it on. The <b>default route</b> (<code>0.0.0.0/0</code> or <code>::/0</code>) is the shortest prefix of all, so it only wins when nothing more specific matches, and that is what makes "everything else" work.</p>
+  <p>When several prefixes contain the destination, the kernel picks the <b>longest prefix</b> (most specific). Type an address in the trace box to watch that decision happen: the chosen path lights up, the packet walk shows the two headers the frame carries, and the range view shows why the smallest range wins. Hover any node for the raw <code>netstat</code> line with its flags decoded; click to pin the highlight.</p>
+</details>
+
+<details class="sec how">
+  <summary>What the filters hide</summary>
+  <p><b>Link-local</b> is <code>169.254.0.0/16</code> and <code>fe80::/10</code>: valid on one physical link only, never forwarded by a router. IPv4 hosts self-assign one when DHCP fails. In IPv6 every interface always has one, and it is what neighbor discovery and router advertisements run over, which is why an IPv6 default route usually points at an <code>fe80::</code> gateway. The <code>%en0</code> suffix exists because the same prefix lives on every interface, so the address alone does not say which link is meant.</p>
+  <p><b>Loopback &amp; self</b> is <code>lo0</code>, <code>127.0.0.0/8</code>, <code>::1</code> and this host's own addresses. macOS installs a host route via <code>lo0</code> for each of its own addresses so that a packet to yourself is delivered internally instead of being sent out the Wi-Fi card. Linux keeps those in a separate local table; Windows shows them as <code>On-link /32</code> rows.</p>
+  <p><b>Multicast</b> is <code>224.0.0.0/4</code> and <code>ff00::/8</code>, one-to-many group addresses. <code>224.0.0.251</code> is mDNS (Bonjour); its MAC <code>01:00:5e:00:00:fb</code> is computed from the IP, not learned by ARP. <code>ff02::/32</code> per interface is link-scope multicast, where NDP lives (<code>ff02::1</code> all nodes, <code>ff02::2</code> all routers).</p>
+  <p><b>Bookkeeping</b> is what the OS adds for itself: host-sized cloning routes such as <code>192.168.1.1/32 UCS</code> that pin the router and the host's own address, broadcast addresses, and on macOS one interface-scoped duplicate default route per tunnel (the <code>I</code> flag) so that a socket bound to that interface has something to use. Ordinary sockets never see those.</p>
+</details>
+
+<details class="sec how">
+  <summary>Neighbors, ARP and MAC addresses</summary>
+  <p>ARP is lazy: nothing scans the subnet. A neighbor row appears only when this host tried to send to that address, or when that device sent an ARP request asking for this host. The kernel then clones a host route from the connected prefix (the <code>W</code> flag, "was cloned") and, if it was the one asking, broadcasts "who has X?" to <code>ff:ff:ff:ff:ff:ff</code>.</p>
+  <p>A <b>resolved</b> entry has a MAC in the gateway column and a countdown in the Expire column (about 20 minutes on macOS; the default gateway's entry is refreshed constantly). An <b>incomplete</b> entry shows <code>link#N</code> instead of a MAC and carries the <code>R</code> flag: the request went unanswered, typically because the device is asleep or gone, and the entry now rejects sends quickly instead of re-asking for every packet. The <code>L</code> flag is on both kinds; it marks an ARP-type entry, not a known MAC.</p>
+  <p>Two bits in the first byte of a MAC tell you a lot. The <code>0x02</code> bit set means <b>locally administered</b>: a randomized address, which phones, tablets and modern laptops use per network for privacy. The <code>0x01</code> bit set means <b>multicast</b>. A router's MAC is usually a burned-in one with neither bit set.</p>
+</details>
+
+<details class="sec how">
+  <summary>Tunnels and VPNs</summary>
+  <p>A <code>utun</code>, <code>tun</code> or <code>wg</code> interface is a tunnel endpoint: a point-to-point interface with a process instead of hardware behind it. Whatever the kernel routes to it is handed to that process as raw packets, and whatever the process writes back looks like packets arriving on it. macOS creates several for its own services (Continuity, iMessage/FaceTime signaling, iCloud Private Relay); those carry only link-local addresses and scoped routes and never see ordinary traffic.</p>
+  <p>Traffic reaches a tunnel three ways. <b>Routes</b>: give it an address and point prefixes at it; every app's packets follow the longest-prefix match without knowing. VPNs add <code>0.0.0.0/1</code> and <code>128.0.0.0/1</code>, which beat the real default route by one bit without deleting it, plus a host route for the VPN server via the real gateway so the encrypted traffic does not loop back in. <b>Binding</b>: an app binds its socket to the interface and uses that interface's scoped routes. <b>Policy</b>: the kernel steers flows by app or domain before routing happens, which is how per-app VPNs and Apple's relay work and why the table shows nothing about them. Paste a before-and-after pair above to watch a VPN take over.</p>
+</details>
+
+<details class="sec how">
+  <summary>The same idea on three operating systems</summary>
+  <table>
+    <tr><th>Concept</th><th>macOS / BSD</th><th>Linux</th><th>Windows</th></tr>
+    <tr><td>directly on the link, no router</td><td>gateway <code>link#12</code>, flags <code>UCS</code></td><td>gateway <code>0.0.0.0</code>, flags <code>U</code></td><td>gateway <code>On-link</code></td></tr>
+    <tr><td>via a next hop</td><td><code>UGS</code> with the router's IP</td><td><code>UG</code> with the router's IP</td><td>gateway column holds the router's IP</td></tr>
+    <tr><td>default route</td><td><code>default</code></td><td><code>0.0.0.0</code> mask <code>0.0.0.0</code></td><td><code>0.0.0.0</code> mask <code>0.0.0.0</code>, lowest metric wins</td></tr>
+    <tr><td>prefix length</td><td><code>10/24</code>, classful shorthand when omitted (<code>127</code> = /8)</td><td>Genmask column</td><td>Netmask column</td></tr>
+    <tr><td>ARP cache</td><td>inside the table as <code>UHLW</code> host routes</td><td>separate: <code>ip neigh</code></td><td>separate: <code>arp -a</code></td></tr>
+    <tr><td>own addresses</td><td>host routes via <code>lo0</code></td><td>separate local table</td><td><code>On-link /32</code> rows</td></tr>
+  </table>
+</details>
+
+<details class="sec" id="glossary">
+  <summary>Flags used in this table</summary>
+  <dl id="flags"></dl>
+</details>
+
+<details class="sec" open id="routes-details">
+  <summary>All routes</summary>
+  <table id="routes"><thead><tr><th>destination</th><th>gateway</th><th>flags</th><th>iface</th><th>expire</th><th>what it means</th></tr></thead><tbody></tbody></table>
+</details>
+
+<footer>Everything runs in your browser; nothing you paste leaves the page, and "copy link" only puts the table into the link itself. Formats understood: macOS / BSD <code>netstat -rn</code>, Linux <code>netstat -rn</code> and <code>route -n</code> (IPv4 and IPv6 tables), Windows <code>netstat -rn</code> / <code>route print</code>. Built while taking 15-441 at CMU.</footer>
+</div>
+
+<script>
+// ===================================================================== model: netstat -rn -> tree
+const FAMILY_MAX = { 4: 32, 6: 128 };
+const BSD_FLAGS = {
+  U: ['RTF_UP', 'route is usable'], G: ['RTF_GATEWAY', 'destination needs forwarding by an intermediary (a next hop)'],
+  H: ['RTF_HOST', 'host entry (a single address, not a network)'], S: ['RTF_STATIC', 'added manually or by DHCP, not learned from the link'],
+  C: ['RTF_CLONING', 'generates new host routes on use (per-neighbor ARP/NDP entries)'], c: ['RTF_PRCLONING', 'protocol-specified cloning'],
+  W: ['RTF_WASCLONED', 'was generated by a cloning route (an ARP/NDP cache entry)'], L: ['RTF_LLINFO', 'holds a link-layer (MAC) address for the destination'],
+  D: ['RTF_DYNAMIC', 'created dynamically by an ICMP redirect'], M: ['RTF_MODIFIED', 'modified dynamically by an ICMP redirect'],
+  R: ['RTF_REJECT', 'host or net unreachable (packets are rejected)'], B: ['RTF_BLACKHOLE', 'packets are silently discarded'],
+  b: ['RTF_BROADCAST', 'destination is a broadcast address'], m: ['RTF_MULTICAST', 'destination is a multicast address'],
+  I: ['RTF_IFSCOPE', 'route is scoped to one interface'], i: ['RTF_IFREF', 'route holds a reference to its interface'],
+  r: ['RTF_ROUTER', 'this host is a default router (advertised itself)'], g: ['RTF_GLOBAL', 'policy hint: destination is on the global Internet'],
+  X: ['RTF_XRESOLVE', 'an external daemon resolves the link address'], Y: ['RTF_PROXY', 'proxying; cloned routes are not scoped'],
+  1: ['RTF_PROTO1', 'protocol-specific flag 1'], 2: ['RTF_PROTO2', 'protocol-specific flag 2'], 3: ['RTF_PROTO3', 'protocol-specific flag 3'],
+};
+const LINUX_FLAGS = {
+  U: ['up', 'route is usable'], G: ['gateway', 'destination needs forwarding by an intermediary (a next hop)'],
+  H: ['host', 'host entry (a single address, not a network)'], R: ['reinstate', 'reinstate route for dynamic routing'],
+  D: ['dynamic', 'installed by a routing daemon or an ICMP redirect'], M: ['modified', 'modified by a routing daemon or an ICMP redirect'],
+  A: ['addrconf', 'installed by IPv6 address autoconfiguration'], C: ['cache', 'cache entry (a resolved neighbor)'],
+  e: ['expires', 'the entry expires'], n: ['nonexthop', 'no next hop (delivered on the link)'], '!': ['reject', 'reject route (packets are dropped)'],
+};
+const IFACE_KINDS = [
+  [/^lo\d*$/, 'loopback (packets to this host itself)'], [/^en\d+$/, 'Ethernet / Wi-Fi (en0 is usually Wi-Fi on a MacBook)'],
+  [/^(eth|eno|ens|enp|em)\d/, 'Ethernet'], [/^(wlan|wlp|wlo|wl)\w*/, 'Wi-Fi'],
+  [/^utun\d+$/, 'userspace tunnel (VPN, iCloud Private Relay, Tailscale, ...)'], [/^(tun|tap)\d+$/, 'tunnel (VPN)'],
+  [/^wg\d+$/, 'WireGuard tunnel'], [/^ppp\d+$/, 'point-to-point link'], [/^awdl\d+$/, 'Apple Wireless Direct Link (AirDrop, Sidecar)'],
+  [/^llw\d+$/, 'low-latency WLAN (companion to awdl)'], [/^ap\d+$/, 'Wi-Fi access point (hotspot / Internet Sharing)'],
+  [/^bridge\d+$/, 'software bridge (Internet Sharing, VMs)'], [/^(docker\d+|br-[0-9a-f]+)$/, 'Docker bridge'],
+  [/^veth/, 'virtual Ethernet pair (container)'], [/^(vmnet|vboxnet|virbr)\d+$/, 'VM host-only / NAT network'],
+  [/^gif\d+$/, 'generic IP-in-IP tunnel'], [/^stf\d+$/, '6to4 tunnel'], [/^anpi\d+$/, 'Apple debug/USB interface'], [/^ipsec\d+$/, 'IPsec tunnel'],
+];
+const isLo = (n) => /^lo\d*$/.test(n) || n === '127.0.0.1';
+const ifaceKind = (n) => { for (const [re, d] of IFACE_KINDS) if (re.test(n)) return d; return ''; };
+
+// ---- addresses as bit strings (so prefix match is startsWith)
+function v4bits(s) {
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(s); if (!m) return null;
+  const o = m.slice(1).map(Number); if (o.some((x) => x > 255)) return null;
+  return o.map((x) => x.toString(2).padStart(8, '0')).join('');
+}
+function v6bits(s) {
+  if (s.includes('.')) { const i = s.lastIndexOf(':'), v4 = v4bits(s.slice(i + 1)); if (!v4) return null;
+    s = s.slice(0, i + 1) + parseInt(v4.slice(0, 16), 2).toString(16) + ':' + parseInt(v4.slice(16), 2).toString(16); }
+  const parts = s.split('::'); if (parts.length > 2) return null;
+  const head = parts[0] ? parts[0].split(':') : [], tail = parts[1] ? parts[1].split(':') : [];
+  if (parts.length === 1 && head.length !== 8) return null;
+  if (head.length + tail.length > 8) return null;
+  const groups = head.concat(Array(8 - head.length - tail.length).fill('0'), tail);
+  let bits = '';
+  for (const g of groups) { if (!/^[0-9a-f]{1,4}$/i.test(g)) return null; bits += parseInt(g, 16).toString(2).padStart(16, '0'); }
+  return bits;
+}
+function addrBits(s) { s = s.split('%')[0]; return s.includes(':') ? { fam: 6, bits: v6bits(s) } : { fam: 4, bits: v4bits(s) }; }
+function fmt4(b) { return [0, 8, 16, 24].map((i) => parseInt(b.slice(i, i + 8), 2)).join('.'); }
+function fmt6(b) {
+  const g = []; for (let i = 0; i < 128; i += 16) g.push(parseInt(b.slice(i, i + 16), 2));
+  let best = -1, bestLen = 0, cur = -1, curLen = 0;
+  for (let i = 0; i < 8; i++) { if (g[i] === 0) { if (cur < 0) { cur = i; curLen = 1; } else curLen++; if (curLen > bestLen) { best = cur; bestLen = curLen; } } else { cur = -1; curLen = 0; } }
+  const hex = g.map((x) => x.toString(16));
+  return bestLen >= 2 ? hex.slice(0, best).join(':') + '::' + hex.slice(best + bestLen).join(':') : hex.join(':');
+}
+const fmt = (b, fam) => (fam === 4 ? fmt4(b) : fmt6(b));
+const netBits = (b, plen) => b.slice(0, plen) + '0'.repeat(b.length - plen);
+const popcount = (b) => (b.match(/1/g) || []).length;
+const LL4 = v4bits('169.254.0.0').slice(0, 16), LL6 = '1111111010', LOOP6 = '0'.repeat(127) + '1';
+const isLinkLocalBits = (b, fam) => (fam === 4 ? b.startsWith(LL4) : b.startsWith(LL6));
+
+
+// ---- what kind of address is this? (longest matching class wins)
+const PRIV = 'RFC 1918 private range: never routed on the Internet; the home router rewrites it to the public address (NAT)';
+const ADDR_CLASSES = {
+  4: [
+    ['0.0.0.0/8', 'unspecified', '"this network"; 0.0.0.0 in a table means "any address"'],
+    ['10.0.0.0/8', 'private', PRIV], ['172.16.0.0/12', 'private', PRIV], ['192.168.0.0/16', 'private', PRIV],
+    ['100.64.0.0/10', 'carrier-grade NAT', 'RFC 6598 shared space: ISPs NAT it a second time; Tailscale hands these out too'],
+    ['127.0.0.0/8', 'loopback', 'this host itself; never leaves the machine'],
+    ['169.254.0.0/16', 'link-local', 'self-assigned when DHCP fails; valid on one link only, never routed'],
+    ['192.0.2.0/24', 'documentation', 'reserved for examples'], ['198.51.100.0/24', 'documentation', 'reserved for examples'], ['203.0.113.0/24', 'documentation', 'reserved for examples'],
+    ['198.18.0.0/15', 'benchmarking', 'reserved for network testing'],
+    ['224.0.0.0/4', 'multicast', 'one-to-many group address; its MAC is computed from the IP (01:00:5e + low 23 bits), not learned by ARP'],
+    ['255.255.255.255/32', 'broadcast', 'limited broadcast: every host on the link'],
+    ['240.0.0.0/4', 'reserved', 'reserved by IANA'],
+  ],
+  6: [
+    ['::/128', 'unspecified', 'no address yet'], ['::1/128', 'loopback', 'this host itself'],
+    ['::ffff:0:0/96', 'IPv4-mapped', 'an IPv4 address carried inside an IPv6 socket'],
+    ['64:ff9b::/96', 'NAT64', 'how IPv6-only networks reach IPv4 through a translator'],
+    ['fe80::/10', 'link-local', 'every interface has one (from the MAC or random); NDP and router advertisements live here; needs a %zone because every link has the same prefix'],
+    ['fc00::/7', 'unique local', 'the IPv6 cousin of private addresses: routed inside a site, never on the Internet'],
+    ['ff00::/8', 'multicast', 'group address; ff02:: is link scope (ff02::1 all nodes, ff02::2 all routers), ff01:: interface scope'],
+    ['2001:db8::/32', 'documentation', 'reserved for examples'], ['2002::/16', '6to4', 'IPv6 tunneled over IPv4'], ['2001::/32', 'Teredo', 'IPv6 tunneled over UDP/IPv4'],
+    ['2000::/3', 'global unicast', 'a real Internet address: no NAT, this is what the world sees'],
+  ],
+};
+const CLASS_BITS = {};
+for (const fam of [4, 6]) CLASS_BITS[fam] = ADDR_CLASSES[fam].map(([c, label, note]) => { const [a, p] = c.split('/'); const b = fam === 4 ? v4bits(a) : v6bits(a); return { bits: b.slice(0, Number(p)), plen: Number(p), label, note }; });
+function addrClass(bits, fam, plen) {
+  if (plen === 0) return { label: 'everything', note: 'the default route covers the whole address space' };
+  let best = null;
+  for (const c of CLASS_BITS[fam]) if (bits.startsWith(c.bits) && (!best || c.plen > best.plen)) best = c;
+  return best || (fam === 4 ? { label: 'public', note: 'globally routable: an Internet address' } : { label: 'reserved', note: 'not currently allocated' });
+}
+// ---- the two flag bits in the first byte of a MAC
+function macInfo(mac) {
+  const b = parseInt(mac.slice(0, 2), 16);
+  return { multicast: !!(b & 1), random: !!(b & 2) && !(b & 1) };
+}
+// ---- address anatomy for a prefix
+function anatomy(netbits, plen, fam) {
+  const max = FAMILY_MAX[fam], hostBits = max - plen;
+  const first = netbits, last = netbits.slice(0, plen) + '1'.repeat(hostBits);
+  let count;
+  if (fam === 4) count = plen >= 31 ? (plen === 32 ? '1 address' : '2 addresses') : `${(2 ** hostBits - 2).toLocaleString()} usable hosts`;
+  else count = hostBits === 0 ? '1 address' : `2^${hostBits} addresses`;
+  return { mask: fam === 4 ? fmt4('1'.repeat(plen) + '0'.repeat(hostBits)) : `/${plen}`, first: fmt(first, fam), last: fmt(last, fam), count, groups: fam === 4 ? 8 : 16 };
+}
+
+function parseDest4(text) {
+  if (text === 'default') return { bits: '0'.repeat(32), plen: 0 };
+  let plen = null; if (text.includes('/')) { const [a, p] = text.split('/'); text = a; plen = Number(p); }
+  const oct = text.split('.'); if (oct.length > 4 || oct.some((o) => !/^\d+$/.test(o) || Number(o) > 255)) return null;
+  if (plen === null) plen = oct.length === 4 ? 32 : 8 * oct.length;
+  while (oct.length < 4) oct.push('0');
+  const bits = v4bits(oct.join('.')); if (!bits || !(plen >= 0 && plen <= 32)) return null;
+  return { bits: netBits(bits, plen), plen };
+}
+function parseDest6(text) {
+  if (text === 'default') return { bits: '0'.repeat(128), plen: 0, scope: '' };
+  let plen = null; if (text.includes('/')) { const [a, p] = text.split('/'); text = a; plen = Number(p); }
+  const [addr, scope = ''] = text.split('%'); const bits = v6bits(addr); if (!bits) return null;
+  if (plen === null) plen = 128; if (!(plen >= 0 && plen <= 128)) return null;
+  return { bits: netBits(bits, plen), plen, scope };
+}
+const MAC_RE = /^(?:[0-9a-f]{1,2}:){5}[0-9a-f]{1,2}$/i, LINK_RE = /^link#(\d+)$/;
+function parseGateway(text) {
+  const g = { kind: 'none', ip: '', scope: '', link: '', mac: '', raw: text, bits: '', fam: 0 };
+  if (!text || ['0.0.0.0', '::', '*', 'On-link', '-'].includes(text)) return g;
+  const m = LINK_RE.exec(text); if (m) { g.kind = 'link'; g.link = m[1]; return g; }
+  if (MAC_RE.test(text)) { g.kind = 'mac'; g.mac = text.split(':').map((x) => parseInt(x, 16).toString(16).padStart(2, '0')).join(':'); return g; }
+  const [addr, scope = ''] = text.split('%'); const a = addrBits(addr); if (!a.bits) return g;
+  Object.assign(g, { kind: 'ip', ip: fmt(a.bits, a.fam), scope, bits: a.bits, fam: a.fam }); return g;
+}
+const mkRoute = (family, dest, gateway, flags, iface, raw, os) => ({ family, dest, gateway, flags: flags || '', iface, expire: '', raw: raw.replace(/\s+$/, ''), extra: {}, os });
+
+function parseNetstat(text) {
+  const routes = [], meta = { os: null };
+  let family = null, columns = null, layout = null, pending = null;
+  for (const line of text.split(/\r?\n/)) {
+    const s = line.trim(); if (!s) continue; const low = s.toLowerCase();
+    if (low === 'internet:' || low === 'internet6:') { family = low.includes('6') ? 6 : 4; columns = null; continue; }
+    if (low.startsWith('kernel ip routing table')) { family = 4; layout = 'linux4'; meta.os = meta.os || 'linux'; continue; }
+    if (low.startsWith('kernel ipv6 routing table')) { family = 6; layout = 'linux6'; meta.os = meta.os || 'linux'; continue; }
+    if (low.startsWith('ipv4 route table')) { family = 4; layout = 'win4'; meta.os = 'windows'; continue; }
+    if (low.startsWith('ipv6 route table')) { family = 6; layout = 'win6'; meta.os = 'windows'; continue; }
+    if (/^(routing tables|active routes|persistent routes|interface list|default gateway)/.test(low) || /^[=-]+$/.test(s)) continue;
+    if (/^(network\s+destination|destination)\b/.test(low) || /^if\s+metric/.test(low)) {
+      if (/^if\s+metric/.test(low)) { columns = ['If', 'Metric', 'Network Destination', 'Gateway']; layout = 'win6'; family = 6; }
+      else if (low.startsWith('network destination')) { columns = ['Network Destination', 'Netmask', 'Gateway', 'Interface', 'Metric']; layout = 'win4'; family = 4; }
+      else if (layout !== 'linux4' && layout !== 'linux6') { columns = s.split(/\s+/); layout = 'bsd'; meta.os = meta.os || 'bsd'; if (family === null) family = 4; }
+      else columns = s.split(/\s+/);
+      continue;
+    }
+    if (!columns) continue;
+    const toks = s.split(/\s+/);
+    if (layout === 'bsd') {
+      const idx = {}; columns.forEach((c, i) => { idx[c.toLowerCase()] = i; });
+      if (['destination', 'gateway', 'flags', 'netif'].some((k) => !(k in idx)) || toks.length <= idx.netif) continue;
+      const r = mkRoute(family, toks[idx.destination], toks[idx.gateway], toks[idx.flags], toks[idx.netif], line, 'bsd');
+      r.expire = 'expire' in idx && toks.length > idx.expire ? toks[idx.expire] : '';
+      columns.forEach((c, i) => { const k = c.toLowerCase(); if (!['destination', 'gateway', 'flags', 'netif', 'expire'].includes(k) && i < toks.length) r.extra[c] = toks[i]; });
+      if (family === 4 && r.dest.includes(':')) r.family = 6;
+      routes.push(r);
+    } else if (layout === 'linux4') {
+      if (toks.length < 8) continue;
+      const r = mkRoute(4, toks[0], toks[1], toks[3], toks[toks.length - 1], line, 'linux'); r.genmask = toks[2];
+      r.extra = { Genmask: toks[2], Metric: toks[4], Ref: toks[5], Use: toks[6] }; routes.push(r);
+    } else if (layout === 'linux6') {
+      if (toks.length < 7) continue;
+      const r = mkRoute(6, toks[0], toks[1], toks[2], toks[toks.length - 1], line, 'linux'); r.extra = { Metric: toks[3], Ref: toks[4], Use: toks[5] }; routes.push(r);
+    } else if (layout === 'win4') {
+      if (toks.length < 5) continue;
+      const r = mkRoute(4, toks[0], toks[2], '', toks[3], line, 'windows'); r.genmask = toks[1]; r.extra = { Metric: toks[4] }; routes.push(r);
+    } else if (layout === 'win6') {
+      if (pending && toks.length === 1) { pending.gateway = toks[0]; pending.raw += ' ' + toks[0]; routes.push(pending); pending = null; continue; }
+      pending = null;
+      if (toks.length === 3) { pending = mkRoute(6, toks[2], '', '', 'if' + toks[0], line, 'windows'); pending.extra = { Metric: toks[1] }; continue; }
+      if (toks.length < 4) continue;
+      const r = mkRoute(6, toks[2], toks.slice(3).join(' '), '', 'if' + toks[0], line, 'windows'); r.extra = { Metric: toks[1] }; routes.push(r);
+    }
+  }
+  if (!routes.length) throw new Error('No routes found. Paste the whole output of `netstat -rn` (macOS, Linux or Windows), headers included.');
+  meta.os = meta.os || 'bsd';
+  return { routes, meta };
+}
+
+function parseIfconfig(text) {
+  const ifaces = {}; let cur = null;
+  for (const line of text.split(/\r?\n/)) {
+    const m = /^(?:\d+:\s+)?([A-Za-z][\w.\-]*?)(?:@\w+)?:\s/.exec(line);
+    if (m && !/^[ \t]/.test(line)) { cur = ifaces[m[1]] = ifaces[m[1]] || { ether: '', inet: [], inet6: [], status: '', mtu: '' }; const mm = /mtu\s+(\d+)/.exec(line); if (mm) cur.mtu = mm[1]; continue; }
+    if (!cur) continue; const s = line.trim(); let x;
+    if ((x = /^(?:ether|link\/ether)\s+([0-9a-f:]{11,17})/i.exec(s))) { cur.ether = x[1].toLowerCase(); continue; }
+    if ((x = /^inet\s+(\d+\.\d+\.\d+\.\d+)(?:\/(\d+))?(?:\s+netmask\s+(0x[0-9a-f]+|\d+\.\d+\.\d+\.\d+))?/i.exec(s))) {
+      let plen = x[2]; if (!plen && x[3]) { const mask = x[3]; plen = mask.startsWith('0x') ? popcount(parseInt(mask, 16).toString(2)) : popcount(v4bits(mask) || ''); }
+      cur.inet.push(x[1] + '/' + (plen || 32)); continue;
+    }
+    if ((x = /^inet6\s+([0-9a-f:]+)(?:%\w+)?(?:\/(\d+))?(?:\s+prefixlen\s+(\d+))?/i.exec(s))) { cur.inet6.push(x[1] + '/' + (x[2] || x[3] || 128)); continue; }
+    if ((x = /^status:\s*(\w+)/.exec(s))) cur.status = x[1];
+  }
+  return ifaces;
+}
+
+function explainFlags(r) { const t = r.os === 'linux' ? LINUX_FLAGS : BSD_FLAGS; return [...r.flags].map((ch) => (ch in t ? `${ch} = ${t[ch][1]}` : `${ch} = ?`)); }
+function flagGlossary(routes) {
+  const out = {};
+  for (const r of routes) { const t = r.os === 'linux' ? LINUX_FLAGS : BSD_FLAGS; for (const ch of r.flags) if (ch in t && !(ch in out)) out[ch] = { name: t[ch][0], meaning: t[ch][1] }; }
+  return out;
+}
+
+function classify(routes) {
+  for (const r of routes) {
+    r.ok = false; let d = null;
+    if (r.family === 4) {
+      if (r.genmask) { const mb = v4bits(r.genmask), ab = v4bits(r.dest); if (mb && ab) { const plen = popcount(mb); d = { bits: netBits(ab, plen), plen }; } }
+      else d = parseDest4(r.dest);
+      if (d) d.scope = '';
+    } else d = parseDest6(r.dest);
+    if (!d) continue;
+    r.ok = true; r.plen = d.plen; r.scope = d.scope || ''; r.netbits = d.bits; r.bits = d.bits.slice(0, d.plen);
+    r.addr = fmt(d.bits, r.family); r.cidr = r.addr + '/' + d.plen;
+    const g = parseGateway(r.gateway); r.gw = g;
+    const flags = new Set(r.flags), win = r.os === 'windows', maxlen = FAMILY_MAX[r.family];
+    const loopNet = r.family === 4 ? r.plen >= 8 && r.netbits.startsWith('01111111') : r.plen === 128 && r.netbits === LOOP6;
+    const lo = isLo(r.iface) || (win && loopNet), hostSized = r.plen === maxlen;
+    const isHost = flags.has('H') || (win && hostSized), hasGw = flags.has('G') || (win && g.kind === 'ip');
+    const tags = new Set(); let kind;
+    if (r.plen === 0) kind = 'default';
+    else if (hasGw && g.kind === 'ip') kind = 'remote';
+    else if (isHost) kind = lo || (win && r.addr === r.iface) ? 'self' : 'neighbor';
+    else kind = 'connected';
+    const multi = r.family === 4 ? r.plen >= 4 && r.netbits.startsWith('1110') : r.plen >= 8 && r.netbits.startsWith('11111111');
+    const ll = r.family === 4 ? r.plen >= 16 && r.netbits.startsWith(LL4) : r.plen >= 10 && r.netbits.startsWith(LL6);
+    if (multi || flags.has('m')) tags.add('multicast');
+    if (ll) tags.add('linklocal');
+    if (lo || loopNet) tags.add('loopback');
+    if ((flags.has('R') && r.os === 'bsd') || flags.has('!')) tags.add('reject');
+    if (flags.has('B') && r.os === 'bsd') tags.add('blackhole');
+    if (flags.has('S') && r.os === 'bsd') tags.add('static');
+    if ((flags.has('W') && r.os === 'bsd') || (flags.has('C') && r.os === 'linux')) tags.add('cache');
+    if (flags.has('r') && r.os === 'bsd') tags.add('router');
+    if (kind === 'connected' && (hostSized || (r.family === 4 && r.addr === '255.255.255.255'))) tags.add('bookkeeping');
+    if (hostSized && loopNet) kind = 'self';
+    if (r.family === 4 && hostSized && r.addr === '255.255.255.255') { tags.add('broadcast'); tags.add('bookkeeping'); }
+    if (kind === 'neighbor' && r.os === 'bsd' && g.kind !== 'mac') tags.add('unresolved');
+    if (kind === 'neighbor' && r.os !== 'bsd') tags.add('hostroute');
+    if (kind === 'default' && r.os === 'bsd' && flags.has('I')) { tags.add('scoped'); tags.add('bookkeeping'); }
+    r.kind = kind; r.tags = [...tags].sort(); r.flags_explained = explainFlags(r);
+    r.cls = addrClass(r.netbits, r.family, r.plen); if (g.kind === 'mac') r.macFlags = macInfo(g.mac);
+  }
+  return routes;
+}
+
+function ifaceKey(name) {
+  const m = /^([a-zA-Z\-]+)(\d*)/.exec(name); const base = m ? m[1] : name, num = m && m[2] ? Number(m[2]) : -1;
+  let rank = 3;
+  if (isLo(name)) rank = 9;
+  else if (/^(en|eth|eno|ens|enp|em|wlan|wlp|wlo|wl|ap|bridge)/.test(name) || /^\d+\.\d+\.\d+\.\d+$/.test(name)) rank = 0;
+  else if (/^(utun|tun|tap|wg|ppp|ipsec|gif|stf)/.test(name)) rank = 1;
+  else if (/^(docker|br-|veth|vmnet|vboxnet|virbr)/.test(name)) rank = 2;
+  return [rank, base, num, name];
+}
+function cmpKeys(a, b) { for (let i = 0; i < Math.max(a.length, b.length); i++) { const x = a[i], y = b[i]; if (x === undefined) return -1; if (y === undefined) return 1; if (x < y) return -1; if (x > y) return 1; } return 0; }
+
+function buildGraph(routes, ifcfg, hostname, source) {
+  const nodes = {};
+  const add = (id, kw) => { let n = nodes[id]; if (!n) { n = Object.assign({ id, children: [], routes: [], tags: [], parent: null, sub: '', note: '' }, kw); nodes[id] = n; } return n; };
+  const mergeTags = (n, r) => { for (const t of r.tags) if (!n.tags.includes(t)) n.tags.push(t); };
+  add('host', { kind: 'host', label: hostname, family: 0, note: source });
+  const good = routes.map((r, i) => [i, r]).filter(([, r]) => r.ok);
+  for (const name of [...new Set(good.map(([, r]) => r.iface))].sort((a, b) => cmpKeys(ifaceKey(a), ifaceKey(b)))) {
+    const n = add('if:' + name, { kind: 'iface', label: name, family: 0, parent: 'host', desc: ifaceKind(name), addrs: [] });
+    const info = ifcfg[name]; if (info) { n.info = info; n.addrs = [...info.inet, ...info.inet6]; }
+  }
+  for (const [i, r] of good) {  // 1. connected prefixes, neighbors, own addresses
+    let n;
+    if (r.kind === 'connected') n = add(`net:${r.family}:${r.iface}:${r.cidr}`, { kind: 'net', label: r.cidr, family: r.family, parent: 'if:' + r.iface, addr: r.addr, plen: r.plen, bits: r.bits, abits: r.netbits });
+    else if (r.kind === 'neighbor' || r.kind === 'self') {
+      n = add(`${r.kind === 'neighbor' ? 'nb' : 'self'}:${r.family}:${r.iface}:${r.addr}`, { kind: r.kind, label: r.addr, family: r.family, addr: r.addr, plen: r.plen, bits: r.bits, abits: r.netbits });
+      if (r.gw.kind === 'mac') { n.mac = r.gw.mac; n.macFlags = r.macFlags; } if (r.expire && r.expire !== '!' && r.expire !== '-') n.expire = r.expire; if (r.scope) n.scope = r.scope;
+    } else continue;
+    n.routes.push(i); r.node = n.id; mergeTags(n, r);
+  }
+  for (const [i, r] of good) {  // 2. remote prefixes hang under their next hop
+    if (r.kind !== 'remote' && r.kind !== 'default') continue;
+    const g = r.gw; let parent;
+    if (g.kind === 'ip' && g.fam === r.family) {
+      let gid = `nb:${r.family}:${r.iface}:${g.ip}`; if (nodes[`self:${r.family}:${r.iface}:${g.ip}`]) gid = `self:${r.family}:${r.iface}:${g.ip}`;
+      const gw = add(gid, { kind: 'neighbor', label: g.ip, family: r.family, addr: g.ip, plen: FAMILY_MAX[r.family], bits: g.bits, abits: g.bits });
+      if (!gw.tags.includes('router')) gw.tags.push('router');
+      if (isLinkLocalBits(g.bits, r.family) && !gw.tags.includes('linklocal')) gw.tags.push('linklocal');
+      parent = gw.id;
+    } else parent = 'if:' + r.iface;
+    const n = add(`rt:${r.family}:${r.iface}:${g.ip || g.raw}:${r.cidr}`, { kind: r.kind, label: r.cidr, family: r.family, parent, addr: r.addr, plen: r.plen, bits: r.bits, abits: r.netbits });
+    n.routes.push(i); r.node = n.id; mergeTags(n, r);
+  }
+  const nets = Object.values(nodes).filter((n) => n.kind === 'net');
+  for (const n of Object.values(nodes)) {  // 3. neighbors go under the most specific connected prefix on their interface
+    if ((n.kind !== 'neighbor' && n.kind !== 'self') || n.parent) continue;
+    const iface = n.id.split(':', 3)[2]; let best = null;
+    for (const m of nets) { if (m.family !== n.family || m.parent !== 'if:' + iface || m.plen >= FAMILY_MAX[n.family]) continue; if (n.abits.startsWith(m.bits) && (!best || m.plen > best.plen)) best = m; }
+    n.parent = best ? best.id : 'if:' + iface;
+    if (best && n.family === 4 && n.abits === best.bits + '1'.repeat(32 - best.plen)) for (const t of ['broadcast', 'bookkeeping']) if (!n.tags.includes(t)) n.tags.push(t);
+    if (n.kind === 'self') for (const m of nets) {
+      const owner = m.parent.slice(3);
+      if (m.family !== n.family || m.plen >= FAMILY_MAX[n.family] || isLo(owner) || nodes[m.parent].info || (n.scope && n.scope !== owner) || (isLinkLocalBits(n.abits, n.family) && !n.scope) || !n.abits.startsWith(m.bits)) continue;
+      const ifn = nodes[m.parent]; if (!ifn.addrs.some((a) => a.split('/')[0] === n.addr)) ifn.addrs.push(n.addr + '/' + m.plen);
+    }
+  }
+  const childKey = (c) => {
+    const k = c.kind, ip = c.abits || '';
+    if (k === 'iface') return [0, ...ifaceKey(c.label)];
+    if (k === 'net') return [1, c.family, +c.tags.includes('bookkeeping'), +c.tags.includes('multicast'), c.plen, ip];
+    if (k === 'neighbor' || k === 'self') return [2, c.family, +(k === 'self'), +!c.tags.includes('router'), +c.tags.includes('unresolved'), ip];
+    return [3, c.family, c.plen, ip];
+  };
+  for (const n of Object.values(nodes)) if (n.parent) nodes[n.parent].children.push(n.id);
+  for (const n of Object.values(nodes)) n.children.sort((a, b) => cmpKeys(childKey(nodes[a]), childKey(nodes[b])));
+  for (const n of Object.values(nodes)) {
+    if (n.abits) n.cls = addrClass(n.abits, n.family, n.kind === 'net' || n.kind === 'remote' || n.kind === 'default' ? n.plen : FAMILY_MAX[n.family]);
+    if (n.kind === 'iface' && /^(utun|tun|tap|wg|ppp|ipsec|gif|stf)\d*$/.test(n.label)) {
+      const real = n.addrs.some((a) => !a.startsWith('fe80:') && !a.startsWith('169.254.'));
+      const busy = n.children.some((c) => !['linklocal', 'multicast', 'bookkeeping'].some((t) => nodes[c].tags.includes(t)));
+      n.tunnelState = real || busy ? 'active' : 'idle';
+    }
+  }
+  for (const n of Object.values(nodes)) describe(n, nodes, routes);
+  return nodes;
+}
+
+function describe(n, nodes, routes) {
+  const k = n.kind, tags = n.tags, rs = n.routes.map((i) => routes[i]);
+  const plural = (c, w) => `${c} ${w}${c === 1 ? '' : 's'}`;
+  if (k === 'iface') {
+    const bits = []; if (n.desc) bits.push(n.desc); const info = n.info || {};
+    if (info.status) bits.push('status ' + info.status); if (info.ether) bits.push('MAC ' + info.ether);
+    n.addrs.sort((a, b) => (a.includes(':') - b.includes(':')) || a.localeCompare(b));
+    n.sub = n.addrs.length ? n.addrs[0] + (n.addrs.length > 1 ? ` +${n.addrs.length - 1}` : '') : '';
+    if (n.tunnelState === 'idle') bits.push('idle tunnel: no real address, only link-local and scoped routes (on macOS: Continuity, iMessage/FaceTime signaling, iCloud Private Relay); ordinary traffic never uses it');
+    if (n.tunnelState === 'active') bits.push('active tunnel: it has an address and real routes, so traffic is being carried through it (a VPN)');
+    if (info.mtu && Number(info.mtu) < 1500 && n.tunnelState) bits.push(`MTU ${info.mtu}: 1500 minus the tunnel's own headers, so inner packets fit without fragmenting`);
+    n.note = bits.join('; ');
+  } else if (k === 'net') {
+    let what = 'directly connected: hosts here are reached without a router';
+    if (tags.includes('multicast')) what = 'multicast group range on this link';
+    else if (tags.includes('linklocal')) what = 'link-local: valid only on this link, never routed';
+    else if (tags.includes('loopback')) what = 'loopback network';
+    else if (tags.includes('bookkeeping')) what = 'host-sized prefix the OS adds for its own bookkeeping';
+    n.sub = n.children.length ? plural(n.children.length, 'neighbor') : ''; n.note = what;
+  } else if (k === 'neighbor') {
+    const parts = [];
+    if (tags.includes('router')) parts.push('router (next hop)'); if (n.mac) parts.push(n.mac + (n.macFlags && n.macFlags.random ? ' (random)' : ''));
+    if (tags.includes('unresolved')) parts.push('no MAC (ARP/NDP unresolved)'); else if (tags.includes('reject')) parts.push('unreachable');
+    if (tags.includes('hostroute')) parts.push('host route');
+    n.sub = parts.join(' \u00b7 ');
+    n.note = n.children.length ? `next hop for ${plural(n.children.length, 'route')}` : 'a host on this link (ARP/NDP cache entry)';
+    if (n.expire) n.note += `; cache entry expires in ${n.expire}s`;
+    if (tags.includes('unresolved')) n.note += '; the kernel asked for its MAC and got no answer (device asleep or gone); marked R so sends fail fast instead of asking again';
+    if (n.macFlags && n.macFlags.random) n.note += '; the MAC has the locally-administered bit set: a randomized private Wi-Fi address, not the hardware one';
+    if (n.macFlags && n.macFlags.multicast) n.note += '; multicast MAC (low bit of the first byte set)';
+  } else if (k === 'self') {
+    n.sub = 'this host'; n.note = "one of this host's own addresses; delivered locally via loopback";
+    if (n.children.length) n.sub += ` \u00b7 next hop for ${plural(n.children.length, 'route')}`;
+  } else if (k === 'remote' || k === 'default') {
+    if (k === 'default') { n.label = 'default'; n.sub = `everything else (${n.id.slice(n.id.lastIndexOf(':') + 1)})`; }
+    else n.sub = 'via ' + (rs[0] && rs[0].gw.ip ? rs[0].gw.ip : 'the interface');
+    n.note = 'forwarded to the next hop; the router decides the rest';
+    if (tags.includes('static')) n.note += '; static (set by hand or DHCP)';
+    if (tags.includes('scoped')) { n.sub += ' \u00b7 scoped to ' + n.id.split(':')[2]; n.note = 'interface-scoped duplicate of the default route: used only by sockets bound to this interface'; }
+  }
+  if (tags.includes('broadcast') && (k === 'neighbor' || k === 'self')) { n.sub = 'broadcast address'; n.note = 'the all-hosts broadcast address of this prefix (or the link)'; }
+  if (tags.includes('reject') && k !== 'neighbor') n.sub = (n.sub ? n.sub + ' \u00b7 ' : '') + 'reject';
+}
+
+
+// ===================================================================== observations: what this table says, in English
+function observations(M) {
+  const N = M.nodes, R = M.routes, out = [];
+  const note = (text, ids = [], level = 'info') => out.push({ text, ids: ids.filter(Boolean), level });
+  const plural = (c, w) => `${c} ${w}${c === 1 ? '' : w.endsWith('s') ? 'es' : 's'}`;
+  const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+  const ifaces = Object.values(N).filter((n) => n.kind === 'iface');
+  for (const ifn of ifaces) {
+    if (isLo(ifn.label) || !ifn.addrs.length) continue;
+    const v4 = ifn.addrs.filter((a) => !a.includes(':')), v6 = ifn.addrs.filter((a) => a.includes(':') && !a.startsWith('fe80:'));
+    for (const a of v4) { const c = addrClass(v4bits(a.split('/')[0]), 4, 32); note(`${ifn.label} is ${a}, a ${c.label} address. ${cap(c.note)}.`, [ifn.id]); }
+    if (v6.length) { const c = addrClass(v6bits(v6[0].split('/')[0]), 6, 128); note(`${ifn.label} also has ${plural(v6.length, 'IPv6 address')} such as ${v6[0]}, ${c.label}: ${c.note}.${v6.length > 1 ? ' With several, the OS picks a temporary one for outgoing connections and rotates it for privacy.' : ''}`, [ifn.id]); }
+  }
+  for (const fam of [4, 6]) {
+    const famName = fam === 4 ? 'IPv4' : 'IPv6';
+    const defs = R.filter((r) => r.ok && r.family === fam && r.kind === 'default' && !r.tags.includes('scoped'));
+    if (!defs.length) { if (R.some((r) => r.ok && r.family === fam)) note(`No ${famName} default route: over ${famName} only the directly connected networks are reachable.`, [], 'warn'); continue; }
+    const d = defs[0], n = N[d.node], gw = n && n.parent && N[n.parent].kind !== 'iface' ? N[n.parent] : null;
+    let t = `Every ${famName} packet that matches nothing more specific goes to ${d.gw.ip || d.gateway} on ${d.iface}`, level = 'info';
+    if (gw && gw.mac) t += `, whose MAC ${gw.mac} is in the cache${gw.expire ? ` (${gw.expire} s before it must be re-verified)` : ''}`;
+    else if (gw && d.os === 'bsd') { t += ', which has NO resolved MAC: the router is unreachable right now'; level = 'warn'; }
+    if (fam === 6 && d.gw.bits && isLinkLocalBits(d.gw.bits, 6)) t += '. A link-local next hop is normal for IPv6: routers advertise themselves with their fe80:: address';
+    note(t + '.', [gw && gw.id, n && n.id], level);
+    if (fam === 4 && /\.1$/.test(d.gw.ip)) note('The gateway sits on .1, the first usable address of its subnet. That is a vendor convention (Linksys and Netgear made 192.168.1.1 famous, Comcast gateways use 10.0.0.1), not a rule: it only has to be inside your subnet so you can ARP for it.', [gw && gw.id]);
+    if (defs.length > 1) note(`${defs.length} ${famName} default routes (${defs.map((r) => r.iface).join(', ')}): on macOS the first in table order wins; Linux and Windows pick by metric.`, defs.map((r) => r.node), 'warn');
+    if (/^(utun|tun|tap|wg|ppp|ipsec)/.test(d.iface)) note(`The ${famName} default route goes through ${d.iface}, a tunnel: a VPN is carrying all your ${famName} traffic.`, [n && n.id]);
+  }
+  const halves = R.filter((r) => r.ok && r.family === 4 && r.plen === 1);
+  if (halves.length >= 2) note(`${halves.map((r) => r.cidr).join(' and ')} via ${halves[0].gw.ip || halves[0].gateway} on ${halves[0].iface}: the VPN trick. Two /1 routes cover the whole space and beat the real default by one bit, so every packet enters the tunnel while the original default stays in place underneath.`, halves.map((r) => r.node));
+  for (const net of Object.values(N).filter((n) => n.kind === 'net' && !['multicast', 'loopback', 'bookkeeping'].some((t) => n.tags.includes(t)))) {
+    const kids = net.children.map((id) => N[id]).filter((k) => k.kind === 'neighbor' && k.routes.length);
+    if (!kids.length || (N[net.parent] && N[net.parent].tunnelState === 'idle')) continue;
+    const resolved = kids.filter((k) => k.mac), incomplete = kids.filter((k) => k.tags.includes('unresolved'));
+    if (kids.every((k) => k.tags.includes('hostroute'))) { note(`${plural(kids.length, 'host route')} on ${net.label} (${kids.map((k) => k.label).join(', ')}): single addresses pinned explicitly, by hand or by DHCP. This OS keeps its ARP cache elsewhere, so no neighbors appear here.`, kids.map((k) => k.id)); continue; }
+    let t = `${plural(kids.length, 'host')} on ${net.label} ${kids.length === 1 ? 'is' : 'are'} in the ARP/NDP cache`;
+    if (resolved.length) t += `: ${resolved.length} resolved (packets exchanged in the last ~20 minutes; nothing scans the subnet, entries appear only when someone talks)`;
+    if (incomplete.length) t += `${resolved.length ? '; ' : ': '}${incomplete.length} incomplete (asked for a MAC, no answer: probably asleep or gone)`;
+    note(t + '.', kids.map((k) => k.id));
+    const rnd = resolved.filter((k) => k.macFlags && k.macFlags.random);
+    if (rnd.length) note(`${rnd.length} of the ${plural(resolved.length, 'resolved MAC')} on ${net.label} ${rnd.length === 1 ? 'has' : 'have'} the locally-administered bit set: randomized private Wi-Fi addresses (phones and laptops rotate these per network), not burned-in ones.`, rnd.map((k) => k.id));
+  }
+  const mdns = R.find((r) => r.ok && r.addr === '224.0.0.251' && r.gw.mac);
+  if (mdns) note(`224.0.0.251 with MAC ${mdns.gw.mac} is mDNS (Bonjour), how Apple devices find each other. Multicast MACs are never learned by ARP; they are computed from the IP.`, [mdns.node]);
+  const idle = ifaces.filter((n) => n.tunnelState === 'idle');
+  if (idle.length) note(`${plural(idle.length, 'tunnel interface')} (${idle.map((n) => n.label).join(', ')}) ${idle.length === 1 ? 'carries' : 'carry'} only link-local addresses and interface-scoped routes: idle system tunnels. On macOS these belong to Continuity, iMessage/FaceTime signaling and iCloud Private Relay; ordinary traffic never uses them. A connected VPN would show an address and real routes.`, idle.map((n) => n.id));
+  if (M.os === 'linux') note('Linux keeps the ARP cache outside this table (`ip neigh`) and its own addresses in a separate local table (`ip route show table local`), so neighbors and self entries are absent here.');
+  if (M.os === 'windows') note('Windows lists its own addresses and broadcast addresses as On-link /32 routes; the ARP cache is separate (`arp -a`).');
+  return out;
+}
+
+// ===================================================================== diff: what changed between two tables
+const routeKey = (r) => (r.ok ? `${r.family}|${r.cidr}${r.scope ? '%' + r.scope : ''}|${r.gateway}|${r.iface}` : `raw|${r.raw.trim()}`);
+function diffRoutes(before, after) {
+  const b = new Set(before.map(routeKey)), a = new Set(after.map(routeKey));
+  return { added: after.filter((r) => !b.has(routeKey(r))), removed: before.filter((r) => !a.has(routeKey(r))) };
+}
+function diffObservations(diff, before, after) {
+  const out = [], plural = (c, w) => `${c} ${w}${c === 1 ? '' : 's'}`;
+  const beforeIf = new Set(before.map((r) => r.iface)), newIf = [...new Set(diff.added.map((r) => r.iface))].filter((i) => !beforeIf.has(i));
+  if (newIf.length) out.push(`New interface${newIf.length === 1 ? '' : 's'} ${newIf.join(', ')} appeared with ${plural(diff.added.filter((r) => newIf.includes(r.iface)).length, 'route')}.`);
+  const halves = diff.added.filter((r) => r.ok && r.plen === 1);
+  if (halves.length >= 2) out.push(`${halves.map((r) => r.cidr).join(' + ')} via ${halves[0].gw.ip || halves[0].gateway} on ${halves[0].iface} were added: a VPN is now capturing all IPv4 traffic by out-specifying the default route by one bit.`);
+  for (const r of diff.added.filter((r) => r.ok && r.kind === 'default' && !r.tags.includes('scoped'))) out.push(`A new default route via ${r.gw.ip || r.gateway} on ${r.iface}${/^(utun|tun|tap|wg|ppp)/.test(r.iface) ? ': a VPN took over as the way out' : ''}.`);
+  for (const r of diff.removed.filter((r) => r.ok && r.kind === 'default' && !r.tags.includes('scoped'))) out.push(`The default route via ${r.gw.ip || r.gateway} on ${r.iface} is gone${after.some((x) => x.ok && x.kind === 'default' && !x.tags.includes('scoped')) ? '' : ': nothing off the local networks is reachable now'}.`);
+  const nb = (list) => list.filter((r) => r.ok && r.kind === 'neighbor').length;
+  if (nb(diff.added) || nb(diff.removed)) out.push(`ARP/NDP cache churn: ${nb(diff.added)} neighbor entries appeared, ${nb(diff.removed)} expired or vanished. That is normal; entries live about 20 minutes.`);
+  if (!out.length) out.push(diff.added.length || diff.removed.length ? `${plural(diff.added.length, 'route')} added, ${plural(diff.removed.length, 'route')} removed, none of them structural.` : 'The two tables are identical.');
+  return out;
+}
+
+function buildModel(text, ifcfgText, hostname) {
+  const { routes, meta } = parseNetstat(text);
+  classify(routes);
+  const ifcfg = ifcfgText && ifcfgText.trim() ? parseIfconfig(ifcfgText) : {};
+  const nodes = buildGraph(routes, ifcfg, hostname || 'this host', '');
+  const M = { hostname: hostname || 'this host', os: meta.os, routes, nodes, glossary: flagGlossary(routes), generated: new Date().toLocaleString() };
+  M.observations = observations(M);
+  return M;
+}
+
+// ===================================================================== samples (fabricated addresses)
+const SAMPLES = {
+  mac: `Routing tables
+
+Internet:
+Destination        Gateway            Flags               Netif Expire
+default            192.168.1.1        UGScg                 en0
+127                127.0.0.1          UCS                   lo0
+127.0.0.1          127.0.0.1          UH                    lo0
+169.254            link#12            UCS                   en0      !
+192.168.1/24       link#12            UCS                   en0      !
+192.168.1.1/32     link#12            UCS                   en0      !
+192.168.1.1        a4:2b:8c:11:22:33  UHLWIir               en0   1150
+192.168.1.20       link#12            UHRLWI                en0      !
+192.168.1.42/32    link#12            UCS                   en0      !
+192.168.1.42       f0:18:98:aa:bb:cc  UHLWI                 lo0
+192.168.1.77       3c:22:fb:44:55:66  UHLWI                 en0   1002
+192.168.1.130      dc:a6:32:77:88:99  UHLWIi                en0    871
+224.0.0/4          link#12            UmCS                  en0      !
+224.0.0.251        1:0:5e:0:0:fb      UHmLWI                en0
+255.255.255.255/32 link#12            UCS                   en0      !
+
+Internet6:
+Destination                             Gateway                                 Flags               Netif Expire
+default                                 fe80::a62b:8cff:fe11:2233%en0           UGcg                  en0
+default                                 fe80::%utun0                            UGcIg               utun0
+default                                 fe80::%utun1                            UGcIg               utun1
+::1                                     ::1                                     UHL                   lo0
+2001:db8:4f00:1::/64                    link#12                                 UC                    en0
+2001:db8:4f00:1::1c2f                   f0:18:98:aa:bb:cc                       UHL                   lo0
+2001:db8:4f00:1:8d3e:1f0a:9c77:2b41     f0:18:98:aa:bb:cc                       UHL                   lo0
+2001:db8:4f00:1::7a3                    dc:a6:32:77:88:99                       UHLWI                 en0
+fe80::%lo0/64                           fe80::1%lo0                             UcI                   lo0
+fe80::1%lo0                             link#1                                  UHLI                  lo0
+fe80::%en0/64                           link#12                                 UCI                   en0
+fe80::1c8a:2f3b:4d5e:6f70%en0           f0:18:98:aa:bb:cc                       UHLI                  lo0
+fe80::a62b:8cff:fe11:2233%en0           a4:2b:8c:11:22:33                       UHLWIir               en0
+fe80::dea6:32ff:fe77:8899%en0           dc:a6:32:77:88:99                       UHLWIi                en0
+fe80::%utun0/64                         fe80::c1d2:e3f4:a5b6:c7d8%utun0         UcI                 utun0
+fe80::c1d2:e3f4:a5b6:c7d8%utun0         link#15                                 UHLI                  lo0
+fe80::%utun1/64                         fe80::1a2b:3c4d:5e6f:7a8b%utun1         UcI                 utun1
+fe80::1a2b:3c4d:5e6f:7a8b%utun1         link#16                                 UHLI                  lo0
+ff00::/8                                ::1                                     UmCI                  lo0
+ff00::/8                                link#12                                 UmCI                  en0
+ff01::%lo0/32                           ::1                                     UmCI                  lo0
+ff01::%en0/32                           link#12                                 UmCI                  en0
+ff02::%lo0/32                           ::1                                     UmCI                  lo0
+ff02::%en0/32                           link#12                                 UmCI                  en0
+`,
+  linux: `Kernel IP routing table
+Destination     Gateway         Genmask         Flags   MSS Window  irtt Iface
+0.0.0.0         192.168.1.1     0.0.0.0         UG        0 0          0 eth0
+10.8.0.0        0.0.0.0         255.255.255.0   U         0 0          0 tun0
+10.10.0.0       10.8.0.1        255.255.0.0     UG        0 0          0 tun0
+169.254.0.0     0.0.0.0         255.255.0.0     U         0 0          0 eth0
+172.17.0.0      0.0.0.0         255.255.0.0     U         0 0          0 docker0
+192.168.1.0     0.0.0.0         255.255.255.0   U         0 0          0 eth0
+192.168.1.1     0.0.0.0         255.255.255.255 UH        0 0          0 eth0
+192.168.50.0    192.168.1.254   255.255.255.0   UG        0 0          0 eth0
+Kernel IPv6 routing table
+Destination                    Next Hop                   Flag Met Ref Use If
+::1/128                        ::                         U    256 2     0 lo
+2001:db8:1::/64                ::                         U    256 1     0 eth0
+fe80::/64                      ::                         U    256 1     0 eth0
+::/0                           fe80::1                    UG   1024 3    0 eth0
+ff00::/8                       ::                         U    256 1     0 eth0
+`,
+  linuxvpn: `Kernel IP routing table
+Destination     Gateway         Genmask         Flags   MSS Window  irtt Iface
+0.0.0.0         10.8.0.1        128.0.0.0       UG        0 0          0 tun0
+0.0.0.0         192.168.1.1     0.0.0.0         UG        0 0          0 eth0
+10.8.0.0        0.0.0.0         255.255.255.0   U         0 0          0 tun0
+10.10.0.0       10.8.0.1        255.255.0.0     UG        0 0          0 tun0
+128.0.0.0       10.8.0.1        128.0.0.0       UG        0 0          0 tun0
+169.254.0.0     0.0.0.0         255.255.0.0     U         0 0          0 eth0
+172.17.0.0      0.0.0.0         255.255.0.0     U         0 0          0 docker0
+192.168.1.0     0.0.0.0         255.255.255.0   U         0 0          0 eth0
+192.168.1.1     0.0.0.0         255.255.255.255 UH        0 0          0 eth0
+192.168.50.0    192.168.1.254   255.255.255.0   UG        0 0          0 eth0
+203.0.113.9     192.168.1.1     255.255.255.255 UGH       0 0          0 eth0
+Kernel IPv6 routing table
+Destination                    Next Hop                   Flag Met Ref Use If
+::1/128                        ::                         U    256 2     0 lo
+2001:db8:1::/64                ::                         U    256 1     0 eth0
+fe80::/64                      ::                         U    256 1     0 eth0
+::/0                           fe80::1                    UG   1024 3    0 eth0
+ff00::/8                       ::                         U    256 1     0 eth0
+`,
+  windows: `===========================================================================
+Interface List
+ 12...00 1c 42 00 00 08 ......Intel(R) PRO/1000 MT Network Connection
+  1...........................Software Loopback Interface 1
+===========================================================================
+
+IPv4 Route Table
+===========================================================================
+Active Routes:
+Network Destination        Netmask          Gateway       Interface  Metric
+          0.0.0.0          0.0.0.0      192.168.1.1     192.168.1.5     25
+        127.0.0.0        255.0.0.0         On-link       127.0.0.1    331
+        127.0.0.1  255.255.255.255         On-link       127.0.0.1    331
+  127.255.255.255  255.255.255.255         On-link       127.0.0.1    331
+      192.168.1.0    255.255.255.0         On-link     192.168.1.5    281
+      192.168.1.5  255.255.255.255         On-link     192.168.1.5    281
+    192.168.1.255  255.255.255.255         On-link     192.168.1.5    281
+        224.0.0.0        240.0.0.0         On-link       127.0.0.1    331
+        224.0.0.0        240.0.0.0         On-link     192.168.1.5    281
+  255.255.255.255  255.255.255.255         On-link       127.0.0.1    331
+  255.255.255.255  255.255.255.255         On-link     192.168.1.5    281
+===========================================================================
+Persistent Routes:
+  None
+
+IPv6 Route Table
+===========================================================================
+Active Routes:
+ If Metric Network Destination      Gateway
+  1    331 ::1/128                  On-link
+ 12    281 fe80::/64                On-link
+ 12    281 fe80::1c2b:3e4f:5a6b:7c8d/128
+                                    On-link
+ 12     25 ::/0                     fe80::1
+  1    331 ff00::/8                 On-link
+ 12    281 ff00::/8                 On-link
+===========================================================================
+Persistent Routes:
+  None
+`,
+};
+
+// ===================================================================== page
+(function () {
+  'use strict';
+  const COL = { host: 0, iface: 1, net: 2, neighbor: 3, self: 3, remote: 4, default: 4 };
+  const COLS = ['this host', 'interfaces', 'connected prefixes', 'next hops & neighbors', 'remote prefixes'];
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let D = null, N = {}, R = [];
+  const state = { f: { fam4: true, fam6: true, neighbors: true, linklocal: false, loopback: true, multicast: false, bookkeeping: false },
+                  pinned: null, match: new Set(), forced: new Set(), vis: new Set(), pos: {}, added: new Set() };
+  const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } } };
+
+  $('#legend').innerHTML = [['host', 'this host'], ['iface', 'interface'], ['net', 'connected prefix'], ['neighbor', 'neighbor / next hop'],
+    ['self', 'own address'], ['remote', 'remote prefix']].map(([k, t]) => `<span><i style="--c:var(--${k})"></i>${t}</span>`).join('') +
+    `<span><i class="line" style="--c:var(--def)"></i>default route</span><span><i class="line dash" style="--c:var(--edge)"></i>unresolved / reject</span>` +
+    `<span><i class="line" style="--c:var(--match)"></i>traced path</span>`;
+
+  // ---------------------------------------------------------------- visibility
+  function passes(n) {
+    if (state.forced.has(n.id)) return true;
+    const f = state.f, t = n.tags;
+    if (n.family === 4 && !f.fam4) return false;
+    if (n.family === 6 && !f.fam6) return false;
+    if ((n.kind === 'neighbor' || n.kind === 'self') && !f.neighbors && !t.includes('router')) return false;
+    if (!f.loopback && (n.kind === 'self' || t.includes('loopback') || (n.kind === 'iface' && isLo(n.label)))) return false;
+    if (!f.linklocal && t.includes('linklocal')) return false;
+    if (!f.multicast && t.includes('multicast')) return false;
+    if (!f.bookkeeping && t.includes('bookkeeping')) return false;
+    return true;
+  }
+  function computeVisible() {
+    const vis = new Set();
+    (function walk(id) {
+      const n = N[id];
+      let keep = passes(n) && n.kind !== 'iface' && !(n.kind === 'neighbor' && !n.routes.length);
+      for (const c of n.children) keep = walk(c) || keep;
+      if (keep || id === 'host') vis.add(id);
+      return keep;
+    })('host');
+    state.vis = vis; return vis;
+  }
+
+  // ---------------------------------------------------------------- layout: tidy tree, one column per kind
+  function layout(vis) {
+    const pitch = 46, gap = 64, charW = 7.2, widths = [90, 90, 90, 90, 90];
+    for (const id of vis) { const n = N[id], c = COL[n.kind]; widths[c] = Math.max(widths[c], Math.min(300, Math.round(Math.max(n.label.length * charW, n.sub.length * 6.4)) + 22)); }
+    const xs = []; let x = 16; widths.forEach((w) => { xs.push(x); x += w + gap; });
+    const pos = {}; let slot = 0;
+    (function place(id) {
+      const n = N[id], kids = n.children.filter((c) => vis.has(c)); let y;
+      if (kids.length) { const ys = kids.map(place); y = (ys[0] + ys[ys.length - 1]) / 2; } else { y = 44 + slot * pitch; slot += 1; }
+      const c = COL[n.kind], h = n.sub ? 38 : 26; pos[id] = { x: xs[c], y: y - h / 2, w: widths[c], h }; return y;
+    })('host');
+    state.pos = pos;
+    return { pos, W: x - gap + 16, H: 44 + Math.max(slot, 1) * pitch, cols: xs.map((xx, i) => [xx, widths[i]]) };
+  }
+  function scrollTo(id) {
+    const p = state.pos[id], box = $('#graph'); if (!p) return;
+    box.scrollTo({ left: Math.max(0, p.x + p.w / 2 - box.clientWidth / 2), top: Math.max(0, p.y + p.h / 2 - box.clientHeight / 2), behavior: 'smooth' });
+  }
+  function ancestors(id) { const out = []; for (let n = N[id]; n; n = n.parent ? N[n.parent] : null) out.push(n.id); return out; }
+  function highlightIds(ids) { const all = []; ids.forEach((id) => { if (N[id]) all.push(...ancestors(id)); }); setClass(all, 'hl', all.length > 0); const svg = $('#graph svg'); if (svg) svg.classList.toggle('faded', all.length > 0 || state.match.size > 0); }
+  function bitsHtml(bits, plen, fam) {
+    const g = fam === 4 ? 8 : 16, parts = [];
+    for (let i = 0; i < bits.length; i += g) { const chunk = bits.slice(i, i + g); const cut = Math.min(Math.max(plen - i, 0), g); parts.push((cut > 0 ? `<b>${chunk.slice(0, cut)}</b>` : '') + chunk.slice(cut)); }
+    return parts.join(' ');
+  }
+  function subtree(id) { const out = []; (function w(i) { out.push(i); N[i].children.forEach(w); })(id); return out; }
+
+  // ---------------------------------------------------------------- render
+  function render() {
+    const vis = computeVisible(), { pos, W, H, cols } = layout(vis);
+    const s = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`];
+    cols.forEach(([x, w], i) => { if (i % 2) s.push(`<rect class="lane" x="${x - 12}" y="0" width="${w + 24}" height="${H}"/>`); s.push(`<text class="col" x="${x}" y="20">${esc(COLS[i].toUpperCase())}</text>`); });
+    for (const id of vis) for (const c of N[id].children) {
+      if (!vis.has(c)) continue;
+      const a = pos[id], b = pos[c], k = N[c], ax = a.x + a.w, ay = a.y + a.h / 2, bx = b.x, by = b.y + b.h / 2, mx = (ax + bx) / 2;
+      const cls = ['edge', k.kind === 'default' ? 'default' : '', k.tags.includes('reject') || k.tags.includes('unresolved') ? 'dashed' : ''].join(' ');
+      s.push(`<path class="${cls}" data-from="${id}" data-to="${c}" d="M${ax} ${ay} C${mx} ${ay} ${mx} ${by} ${bx} ${by}"/>`);
+    }
+    for (const id of vis) {
+      const n = N[id], p = pos[id], dim = n.tags.includes('reject') || n.tags.includes('unresolved') || n.tags.includes('blackhole');
+      s.push(`<g class="node ${n.kind}${dim ? ' dim' : ''}" data-id="${esc(id)}"><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}"/>`);
+      const maxc = Math.floor((p.w - 16) / 7.2);
+      if (n.sub) s.push(`<text x="${p.x + 9}" y="${p.y + 15}">${esc(n.label.slice(0, maxc))}</text><text class="sub" x="${p.x + 9}" y="${p.y + 30}">${esc(n.sub.slice(0, Math.floor(maxc * 1.15)))}</text>`);
+      else s.push(`<text x="${p.x + 9}" y="${p.y + 17}">${esc(n.label.slice(0, maxc))}</text>`);
+      if (state.added.has(id)) s.push(`<text class="badge" x="${p.x + p.w - 6}" y="${p.y + 12}" text-anchor="end">NEW</text>`);
+      s.push('</g>');
+    }
+    s.push('</svg>');
+    $('#graph').innerHTML = s.join('');
+    const svg = $('#graph svg');
+    svg.addEventListener('mouseover', (e) => { const g = e.target.closest('g.node'); if (g) { hover(g.dataset.id); showTip(g.dataset.id, e); } });
+    svg.addEventListener('mousemove', moveTip);
+    svg.addEventListener('mouseout', (e) => { if (e.target.closest('g.node')) { hover(null); $('#tip').hidden = true; } });
+    svg.addEventListener('click', (e) => { const g = e.target.closest('g.node'); state.pinned = g && state.pinned !== g.dataset.id ? g.dataset.id : null; hover(null); });
+    renderTable(); applyMatch(); hover(null);
+  }
+  function setClass(ids, cls, on) {
+    const set = new Set(ids);
+    document.querySelectorAll('#graph g.node').forEach((g) => g.classList.toggle(cls, on && set.has(g.dataset.id)));
+    document.querySelectorAll('#graph .edge').forEach((p) => p.classList.toggle(cls, on && set.has(p.dataset.from) && set.has(p.dataset.to)));
+    document.querySelectorAll('#routes tr[data-node]').forEach((tr) => tr.classList.toggle(cls, on && set.has(tr.dataset.node)));
+  }
+  function hover(id) {
+    const target = id || state.pinned, ids = target ? ancestors(target).concat(subtree(target)) : [];
+    setClass(ids, 'hl', !!target);
+    const svg = $('#graph svg'); if (svg) svg.classList.toggle('faded', !!target || state.match.size > 0);
+  }
+  function showTip(id, e) {
+    const n = N[id], tip = $('#tip');
+    let h = `<div class="t">${esc(n.label)}${n.sub ? ' \u00b7 ' + esc(n.sub) : ''}</div>`;
+    if (n.note) h += `<div class="n">${esc(n.note)}</div>`;
+    if (n.cls && n.kind !== 'iface') h += `<div class="n"><span class="tag">${esc(n.cls.label)}</span> ${esc(n.cls.note)}</div>`;
+    if ((n.kind === 'net' || n.kind === 'remote') && n.abits) { const a = anatomy(n.abits, n.plen, n.family); h += `<div class="n">mask ${esc(a.mask)} \u00b7 ${esc(a.first)} to ${esc(a.last)} \u00b7 ${esc(a.count)}</div><div class="bits">${bitsHtml(n.abits, n.plen, n.family)}</div>`; }
+    if (n.kind === 'iface' && n.addrs && n.addrs.length) h += `<div class="n">addresses: ${esc(n.addrs.join(', '))}</div>`;
+    for (const i of n.routes) { const r = R[i]; h += `<pre>${esc(r.raw.trim())}\n<span class="f">${esc(r.flags_explained.join('\n'))}</span></pre>`; }
+    if (!n.routes.length && n.kind === 'neighbor') h += '<div class="n">no entry of its own: it appears only as the gateway of other routes</div>';
+    tip.innerHTML = h; tip.hidden = false; moveTip(e);
+  }
+  function moveTip(e) {
+    const tip = $('#tip'); if (tip.hidden) return;
+    const w = tip.offsetWidth, hgt = tip.offsetHeight; let x = e.clientX + 16, y = e.clientY + 16;
+    if (x + w > window.innerWidth - 8) x = Math.max(8, e.clientX - w - 16);
+    if (y + hgt > window.innerHeight - 8) y = Math.max(8, e.clientY - hgt - 16);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+
+  // ---------------------------------------------------------------- routes table
+  function meaning(r) {
+    if (!r.ok) return 'not understood';
+    const t = r.tags;
+    let m = { default: 'default route: everything not matched elsewhere, via ' + (r.gw.ip || r.gateway), remote: 'forward to next hop ' + (r.gw.ip || r.gateway),
+              connected: 'directly attached: resolve MAC on the link, no router', neighbor: r.gw.mac ? 'cached neighbor, MAC ' + r.gw.mac : 'host route on the link',
+              self: "this host's own address, delivered locally" }[r.kind];
+    if (t.includes('unresolved')) m = 'neighbor without a MAC yet (ARP/NDP incomplete)';
+    if (t.includes('reject')) m += '; REJECT (unreachable)';
+    if (t.includes('multicast')) m += '; multicast';
+    if (t.includes('linklocal')) m += '; link-local (never routed)';
+    if (t.includes('broadcast')) m = 'broadcast address';
+    if (t.includes('bookkeeping') && r.kind === 'connected') m = 'host-sized prefix the OS keeps for itself';
+    if (t.includes('scoped')) m = 'per-interface duplicate default route, only for sockets bound to ' + r.iface;
+    if (t.includes('static')) m += '; static';
+    return m;
+  }
+  function renderTable() {
+    $('#routes tbody').innerHTML = R.map((r, i) => {
+      const hidden = r.node ? !state.vis.has(r.node) : false;
+      return `<tr data-i="${i}" ${r.node ? `data-node="${esc(r.node)}"` : ''} class="${hidden ? 'hidden-route' : ''}"><td>${esc(r.ok ? r.cidr + (r.scope ? '%' + r.scope : '') : r.dest)}</td><td>${esc(r.gateway)}</td><td>${esc(r.flags)}</td><td>${esc(r.iface)}</td><td>${esc(r.expire || '')}</td><td class="meaning">${r.cls ? `<span class="tag">${esc(r.cls.label)}</span> ` : ''}${esc(meaning(r))}</td></tr>`;
+    }).join('');
+    $('#routes-details summary').textContent = `All routes (${R.length})${R.some((r) => r.node && !state.vis.has(r.node)) ? ' \u2014 grey rows are hidden by the filters above' : ''}`;
+    const tb = $('#routes tbody');
+    tb.onmouseover = (e) => { const tr = e.target.closest('tr[data-node]'); if (tr) hover(tr.dataset.node); };
+    tb.onmouseout = () => hover(null);
+    tb.onclick = (e) => {
+      const tr = e.target.closest('tr[data-node]'); if (!tr) return; const id = tr.dataset.node;
+      if (!state.vis.has(id)) { ancestors(id).forEach((a) => state.forced.add(a)); render(); }
+      state.pinned = id; hover(null); scrollTo(id);
+    };
+  }
+
+  // ---------------------------------------------------------------- longest-prefix match
+  function trace(text) {
+    const box = $('#explain'); text = text.trim();
+    state.match = new Set(); state.forced = new Set();
+    const ip = text ? addrBits(text) : { bits: null };
+    $('#walk').hidden = true;
+    if (!ip.bits) { box.hidden = !text; box.textContent = text ? `"${text}" is not an IPv4 or IPv6 address` : ''; render(); return; }
+    const cands = R.filter((r) => r.ok && r.family === ip.fam && ip.bits.startsWith(r.bits)).sort((a, b) => b.plen - a.plen);
+    const lines = [`packet to ${text}`];
+    if (!cands.length) lines.push('  no route matches: the kernel would fail with "No route to host"');
+    else {
+      const w = cands[0];
+      lines.push(`  ${cands.length} route${cands.length === 1 ? '' : 's'} contain${cands.length === 1 ? 's' : ''} it; the longest prefix wins:`);
+      for (const r of cands) lines.push(`  ${r === w ? '->' : '  '} ${(r.cidr + (r.scope ? '%' + r.scope : '')).padEnd(30)} ${r.gateway.padEnd(24)} ${r.flags.padEnd(10)} ${r.iface}`);
+      const ties = cands.filter((r) => r.plen === w.plen);
+      if (ties.length > 1) lines.push(`  (${ties.length} tie on prefix length; the first in table order wins${ties.some((r) => r.os === 'bsd' && r.flags.includes('I')) ? '; I-flagged ones are interface-scoped and only apply to sockets bound to that interface' : ''})`);
+      const net = cands.find((r) => ['connected', 'remote', 'default'].includes(r.kind));
+      if (w.kind === 'remote' || w.kind === 'default') lines.push(`  => out ${w.iface} to next hop ${w.gw.ip || w.gateway}, which forwards it toward ${w.cidr}`);
+      else if (w.kind === 'connected') lines.push(`  => ${text} is directly on ${w.iface}: resolve its MAC with ARP/NDP and send it there`);
+      else if (w.kind === 'neighbor') lines.push(`  => ${text} is a host on ${w.iface}; MAC ${w.gw.mac ? w.gw.mac + ' already cached' : 'not resolved yet'}${net ? ', cloned from ' + net.cidr : ''}`);
+      else if (w.kind === 'self') lines.push(`  => that is this host itself; delivered over ${w.iface}`);
+      if (w.node) ancestors(w.node).forEach((a) => { state.match.add(a); state.forced.add(a); });
+      $('#walk').innerHTML = walkHtml(text, ip, w, cands) + intervalsHtml(ip, cands);
+    }
+    $('#walk').hidden = !cands.length;
+    box.innerHTML = `<button class="close" type="button" id="clear-trace">clear</button>${esc(lines.join('\n'))}`;
+    box.hidden = false; $('#clear-trace').onclick = () => { $('#addr').value = ''; trace(''); };
+    render();
+  }
+  function walkHtml(text, ip, w, cands) {
+    const fam = ip.fam, iface = N['if:' + w.iface] || { addrs: [] }, isV6 = fam === 6;
+    const own = iface.addrs.find((a) => (isV6 ? a.includes(':') && !a.startsWith('fe80:') : !a.includes(':'))) || iface.addrs.find((a) => (isV6 ? a.includes(':') : !a.includes(':')));
+    const srcIp = own ? own.split('/')[0] : `(${w.iface}'s address)`, srcMac = iface.info && iface.info.ether ? iface.info.ether : `(${w.iface}'s MAC)`;
+    const steps = [`<b>1. Longest-prefix match.</b> ${cands.length === 1 ? 'Only one route contains' : cands.length + ' routes contain'} ${esc(text)}; <code>${esc(w.cidr)}</code> on <code>${esc(w.iface)}</code> is the most specific, so it wins.`];
+    if (w.kind === 'self') {
+      steps.push(`<b>2. Delivery.</b> That is one of this host's own addresses: the packet is handed to the loopback path and never reaches the wire.`);
+      return `<div class="steps">${steps.map((t) => `<p>${t}</p>`).join('')}</div>`;
+    }
+    const remote = w.kind === 'remote' || w.kind === 'default', nextHop = remote ? w.gw.ip : text;
+    steps.push(`<b>2. Next hop.</b> ${remote ? `<code>${esc(w.cidr)}</code> is not on a local link, so the next hop is the route's gateway <code>${esc(nextHop)}</code>` : `<code>${esc(w.cidr)}</code> is directly connected, so the next hop is the destination itself`}. The IP header will still say <code>${esc(text)}</code>; only the frame is addressed to the hop.`);
+    const nb = N[`nb:${fam}:${w.iface}:${nextHop}`] || N[`self:${fam}:${w.iface}:${nextHop}`];
+    let dstMac = '?';
+    if (nb && nb.mac) { dstMac = nb.mac; steps.push(`<b>3. ${isV6 ? 'NDP' : 'ARP'} cache hit.</b> <code>${esc(nextHop)}</code> is at <code>${esc(nb.mac)}</code>${nb.expire ? `, ${esc(nb.expire)} s before the entry must be re-verified` : ''}${nb.macFlags && nb.macFlags.random ? ' (a randomized MAC)' : ''}.`); }
+    else if (isV6) { const tail = ip.bits.slice(104); const sn = 'ff02::1:ff' + parseInt(tail.slice(0, 8), 2).toString(16).padStart(2, '0') + ':' + parseInt(tail.slice(8), 2).toString(16).padStart(4, '0'); steps.push(`<b>3. NDP.</b> No cached MAC for <code>${esc(nextHop)}</code>: a Neighbor Solicitation goes to the solicited-node multicast group <code>${esc(sn)}</code>; the packet waits for the advertisement.`); }
+    else steps.push(`<b>3. ARP.</b> ${nb ? 'The cache entry is incomplete' : 'No cache entry'} for <code>${esc(nextHop)}</code>: the kernel clones a host route and broadcasts <code>who has ${esc(nextHop)}? tell ${esc(srcIp)}</code> to <code>ff:ff:ff:ff:ff:ff</code>. The packet waits; if nobody answers, the entry is marked R and the send fails with "host is down".`);
+    steps.push(`<b>4. The frame leaves ${esc(w.iface)}.</b> Two addresses on the outside, two on the inside:`);
+    const hdr = `<div class="frame"><div class="hdr eth"><span class="lbl">Ethernet</span><span><small>dst MAC</small>${esc(dstMac)}</span><span><small>src MAC</small>${esc(srcMac)}</span><span><small>type</small>${isV6 ? '0x86DD (IPv6)' : '0x0800 (IPv4)'}</span></div>` +
+      `<div class="hdr ip"><span class="lbl">${isV6 ? 'IPv6' : 'IPv4'}</span><span><small>src IP</small>${esc(srcIp)}</span><span><small>dst IP</small>${esc(text)}</span><span><small>${isV6 ? 'hop limit' : 'TTL'}</small>64</span></div><div class="hdr pl"><span class="lbl">payload</span><span>TCP / UDP / ICMP ...</span></div></div>`;
+    steps.push(`${remote ? `The router at <code>${esc(nextHop)}</code> strips the Ethernet header, looks up <code>${esc(text)}</code> in its own table, and repeats the whole dance with its next hop. The IP addresses survive every hop${fam === 4 && w.cidr === '0.0.0.0/0' && /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(srcIp) ? ', except that a NAT router rewrites the private source address to its public one' : ''}; the MACs are rewritten at each one.` : 'Delivered in one hop: the destination is on this link.'}`);
+    return `<div class="steps">${steps.slice(0, 4).map((t) => `<p>${t}</p>`).join('')}${hdr}<p>${steps[4]}</p></div>`;
+  }
+  function intervalsHtml(ip, cands) {
+    const rows = [...cands].sort((a, b) => a.plen - b.plen), max = FAMILY_MAX[ip.fam];
+    const frac = (bits, start) => { const k = Math.min(24, max - start); return k <= 0 ? 0 : parseInt(bits.slice(start, start + k).padEnd(k, '0'), 2) / 2 ** k; };
+    const body = rows.map((r, i) => {
+      const next = rows[i + 1]; let child = '';
+      if (next) child = `<i class="child" style="left:${(frac(next.bits.padEnd(max, '0'), r.plen) * 100).toFixed(2)}%;width:${Math.max(100 / 2 ** Math.min(next.plen - r.plen, 30), 0.5).toFixed(2)}%"></i>`;
+      return `<div class="row${i === rows.length - 1 ? ' win' : ''}"><span class="lbl">${esc(r.cidr)}</span><span class="bar">${child}<i class="pt" style="left:${(frac(ip.bits, r.plen) * 100).toFixed(2)}%"></i></span><span class="w">${r.plen === 0 ? 'everything' : `2<sup>${max - r.plen}</sup> addresses`}</span></div>`;
+    }).join('');
+    const w = rows[rows.length - 1];
+    return `<div class="intervals"><p class="cap">Why the longest prefix wins: each bar is one matching prefix's range, the dot is ${esc(ip.fam === 4 ? fmt4(ip.bits) : fmt6(ip.bits))}, and the shaded slice is where the next, more specific prefix sits inside it. Smaller range, more specific, wins.</p>${body}<p class="cap bits">${bitsHtml(ip.bits, w.plen, ip.fam)} <span>first ${w.plen} bits match ${esc(w.cidr)}</span></p></div>`;
+  }
+  function applyMatch() { setClass([...state.match], 'match', state.match.size > 0); if (state.match.size) scrollTo([...state.match].pop()); }
+
+  // ---------------------------------------------------------------- observations, changes
+  function renderObservations() {
+    const list = $('#obs');
+    list.innerHTML = D.observations.map((o, i) => `<li class="${o.level}" data-i="${i}">${esc(o.text)}</li>`).join('');
+    list.onmouseover = (e) => { const li = e.target.closest('li'); if (li) highlightIds(D.observations[li.dataset.i].ids); };
+    list.onmouseout = () => hover(null);
+  }
+  function renderChanges() {
+    const sec = $('#changes'); sec.hidden = !D.diff; if (!D.diff) return;
+    const row = (r) => `<tr><td>${esc(r.ok ? r.cidr : r.dest)}</td><td>${esc(r.gateway)}</td><td>${esc(r.flags)}</td><td>${esc(r.iface)}</td></tr>`;
+    $('#changes-body').innerHTML = `<ul>${D.diffNotes.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` +
+      (D.diff.added.length ? `<h4>Added (${D.diff.added.length})</h4><table class="mini added">${D.diff.added.map(row).join('')}</table>` : '') +
+      (D.diff.removed.length ? `<h4>Removed (${D.diff.removed.length})</h4><table class="mini removed">${D.diff.removed.map(row).join('')}</table>` : '');
+  }
+  const b64u = (bytes) => { let s = ''; for (let i = 0; i < bytes.length; i += 8192) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+  const unb64u = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+  async function encodeShare(text) {
+    const bytes = new TextEncoder().encode(text);
+    try { if ('CompressionStream' in window) { const cs = new CompressionStream('deflate-raw'), wr = cs.writable.getWriter(); wr.write(bytes); wr.close(); return 'z' + b64u(new Uint8Array(await new Response(cs.readable).arrayBuffer())); } } catch (e) { /* fall through */ }
+    return 'p' + b64u(bytes);
+  }
+  async function decodeShare(s) {
+    const bytes = unb64u(s.slice(1)); if (s[0] !== 'z') return new TextDecoder().decode(bytes);
+    const ds = new DecompressionStream('deflate-raw'), wr = ds.writable.getWriter(); wr.write(bytes); wr.close();
+    return new TextDecoder().decode(await new Response(ds.readable).arrayBuffer());
+  }
+  $('#share').addEventListener('click', async () => {
+    if (!D) return; const btn = $('#share');
+    const parts = ['t=' + await encodeShare($('#netstat').value), 'h=' + encodeURIComponent($('#hostname').value.trim())];
+    if ($('#ifcfg').value.trim()) parts.push('i=' + await encodeShare($('#ifcfg').value));
+    if ($('#before').value.trim()) parts.push('b=' + await encodeShare($('#before').value));
+    const url = location.origin + location.pathname + '#' + parts.join('&');
+    try { await navigator.clipboard.writeText(url); btn.textContent = 'link copied'; } catch (e) { history.replaceState(null, '', '#' + parts.join('&')); btn.textContent = 'link is in the address bar'; }
+    setTimeout(() => { btn.textContent = 'copy link'; }, 2500);
+  });
+  async function loadFromHash() {
+    if (!location.hash.startsWith('#t=')) return false;
+    try {
+      const q = {}; location.hash.slice(1).split('&').forEach((kv) => { const i = kv.indexOf('='); q[kv.slice(0, i)] = kv.slice(i + 1); });
+      $('#netstat').value = await decodeShare(q.t); $('#ifcfg').value = q.i ? await decodeShare(q.i) : ''; $('#before').value = q.b ? await decodeShare(q.b) : '';
+      $('#hostname').value = q.h ? decodeURIComponent(q.h) : 'this host';
+      return draw(false);
+    } catch (e) { return false; }
+  }
+
+  // ---------------------------------------------------------------- input panel
+  function draw(fromUser) {
+    const text = $('#netstat').value, err = $('#err');
+    try {
+      D = buildModel(text, $('#ifcfg').value, $('#hostname').value.trim() || 'this host');
+    } catch (e) { err.textContent = e.message; err.hidden = false; return false; }
+    err.hidden = true; N = D.nodes; R = D.routes; D.diff = null; state.added = new Set();
+    const beforeText = $('#before').value;
+    if (beforeText.trim()) {
+      try { const B = parseNetstat(beforeText); classify(B.routes); D.diff = diffRoutes(B.routes, R); D.diffNotes = diffObservations(D.diff, B.routes, R); D.diff.added.forEach((r) => { if (r.node) state.added.add(r.node); }); }
+      catch (e) { err.textContent = 'earlier table: ' + e.message; err.hidden = false; }
+    }
+    state.pinned = null; state.match = new Set(); state.forced = new Set(); $('#explain').hidden = true; $('#walk').hidden = true; $('#addr').value = '';
+    const n4 = R.filter((r) => r.ok && r.family === 4).length, n6 = R.filter((r) => r.ok && r.family === 6).length;
+    $('#host').textContent = D.hostname;
+    $('#meta').textContent = `${D.os} format \u00b7 ${n4} IPv4 + ${n6} IPv6 routes${fromUser === 'sample' ? ' \u00b7 example data' : ''}`;
+    const gl = Object.keys(D.glossary).sort();
+    $('#flags').innerHTML = gl.map((k) => `<dt>${esc(k)}</dt><dd>${esc(D.glossary[k].name)} \u2014 ${esc(D.glossary[k].meaning)}</dd>`).join('');
+    $('#glossary').hidden = !gl.length;
+    if (fromUser) { store.set('routeviz-netstat', text); store.set('routeviz-ifcfg', $('#ifcfg').value); store.set('routeviz-before', $('#before').value); store.set('routeviz-host', $('#hostname').value); $('#input').open = false; }
+    renderObservations(); renderChanges(); render(); return true;
+  }
+  document.querySelectorAll('.chip[data-sample]').forEach((b) => b.addEventListener('click', () => {
+    const k = b.dataset.sample; $('#netstat').value = SAMPLES[k]; $('#ifcfg').value = ''; $('#before').value = k === 'linuxvpn' ? SAMPLES.linux : '';
+    $('#hostname').value = { mac: 'laptop', linux: 'server', linuxvpn: 'server', windows: 'desktop' }[k]; draw('sample');
+  }));
+  $('#clear').addEventListener('click', () => { $('#netstat').value = ''; $('#ifcfg').value = ''; $('#before').value = ''; $('#err').hidden = true; $('#netstat').focus(); });
+  $('#draw').addEventListener('click', () => draw(true));
+  $('#netstat').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) draw(true); });
+  document.querySelectorAll('#controls input[type=checkbox]').forEach((cb) => {
+    cb.checked = state.f[cb.dataset.f];
+    cb.addEventListener('change', () => { state.f[cb.dataset.f] = cb.checked; if (D) render(); });
+  });
+  $('#lookup').addEventListener('submit', (e) => { e.preventDefault(); if (D) trace($('#addr').value); });
+  $('#addr').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (D) trace($('#addr').value); } });
+  const themes = ['auto', 'light', 'dark'];
+  $('#theme').addEventListener('click', () => {
+    const cur = document.documentElement.dataset.theme || 'auto', next = themes[(themes.indexOf(cur) + 1) % 3];
+    if (next === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = next;
+    $('#theme').textContent = '\u25d0 ' + next; store.set('routeviz-theme', next);
+  });
+  const t = store.get('routeviz-theme'); if (t && t !== 'auto') { document.documentElement.dataset.theme = t; $('#theme').textContent = '\u25d0 ' + t; }
+
+  // first paint: the viewer's last table if this browser remembers one, else the macOS example
+  (async () => {
+    if (await loadFromHash()) { $('#input').open = false; return; }
+    const saved = store.get('routeviz-netstat');
+    if (saved && saved.trim()) {
+      $('#netstat').value = saved; $('#ifcfg').value = store.get('routeviz-ifcfg') || ''; $('#before').value = store.get('routeviz-before') || ''; $('#hostname').value = store.get('routeviz-host') || 'this host';
+      if (draw(false)) { $('#input').open = false; return; }
+    }
+    document.querySelector('.chip[data-sample="mac"]').click();
+  })();
+})();
+
+</script>
+</body>
+</html>
