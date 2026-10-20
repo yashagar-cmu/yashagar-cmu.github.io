@@ -1,7 +1,7 @@
 {
   "_comment": "Written by bin/update_resume_pdf.py - do not edit by hand. last_updated is when the PDF content last changed, not when the job last ran; an unchanged document is not recommitted.",
-  "last_updated": "2026-10-09T13:55:13Z",
+  "last_updated": "2026-10-20T12:20:29Z",
   "pages": 1,
   "bytes": 116844,
-  "sha256": "60928d2e8ffd12fd0e09bf58eb08d8685ea257cd716a4b5ddc26170f468c59bd"
+  "sha256": "7df66bce347f8452d662f1ed330a996c962dba124952a94a2a4b055cd8d00e37"
 }
