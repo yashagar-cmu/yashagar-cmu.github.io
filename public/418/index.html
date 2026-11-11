@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPU-Accelerated Computational Lithography Simulation</title>
+</head>
+<body>
+<h1>GPU-Accelerated Computational Lithography Simulation</h1>
+<p>15-418/618 Final Project, Fall 2026</p>
+<p>Team Members: Yash Agarwal, [Team member 2]</p>
+<p>Project URL: <a href="https://yash-agarwal.org/418">https://yash-agarwal.org/418</a></p>
+
+<h2>Summary</h2>
+<p>We plan to implement and optimize a GPU-based computational lithography simulator using C++ and CUDA. We will first implement a baseline simulator using full-resolution FFTs, and then implement a more efficient algorithm that reduces the sizes of the intermediate FFTs. We will experiment with several parallelization strategies, including batching optical computations, parallel reductions, memory layout optimizations, and kernel fusion, and compare their performance on NVIDIA GPUs.</p>
+
+<h2>Documents</h2>
+<ul>
+<li><a href="#">Project proposal</a> (link coming soon)</li>
+<li>Milestone report (due November 23)</li>
+<li>Final report (due December 10)</li>
+</ul>
+
+<h2>Schedule</h2>
+<table border="1" cellpadding="6">
+<tr><th>Dates</th><th>Planned Work</th></tr>
+<tr><td>Nov 10–15</td><td>Set up OpenILT, obtain reference outputs and optical kernels, and begin implementing the baseline C++/CUDA simulator.</td></tr>
+<tr><td>Nov 16–22</td><td>Complete the baseline simulator and implement the reduced-resolution algorithm. Validate correctness and collect preliminary runtime measurements for the November 23 milestone.</td></tr>
+<tr><td>Nov 23–29</td><td>Implement batched cuFFT and compare different approaches for parallel intensity accumulation. Begin experimenting with memory layouts.</td></tr>
+<tr><td>Nov 30–Dec 6</td><td>Experiment with kernel fusion and other optimizations based on profiling results. If time permits, begin a stretch goal involving multiple-mask execution.</td></tr>
+<tr><td>Dec 7–10</td><td>Run final benchmarks, compare the implementations, analyze performance bottlenecks, and complete the final report.</td></tr>
+<tr><td>Dec 11</td><td>Present our implementation and performance results at the poster session.</td></tr>
+</table>
+</body>
+</html>
